@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const TESTNET = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
+const MAX_PAYMENT_MICROCCD = 1_000_000n;
 const allowedEnv = new Set([
   "HOST", "PORT", "CONCORDIUM_NETWORK", "CCD_ACCOUNT_ADDRESS", "SELLER_PAY_TO",
   "FACILITATOR_HOST", "FACILITATOR_PORT", "FACILITATOR_SETTLEMENT_ENABLED",
@@ -50,6 +51,8 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) {
 }
 const network = process.env.CONCORDIUM_NETWORK || TESTNET;
 if (network !== TESTNET) throw new Error("The facilitator is Testnet-only");
+const maxAmountMicroCcd = positiveInteger("FACILITATOR_MAX_AMOUNT_MICROCCD", "1000000");
+if (BigInt(maxAmountMicroCcd) > MAX_PAYMENT_MICROCCD) throw new Error("FACILITATOR_MAX_AMOUNT_MICROCCD cannot exceed the hard 1 CCD facilitator limit");
 
 export const facilitatorConfig = Object.freeze({
   host: host === "localhost" ? "127.0.0.1" : host,
@@ -61,7 +64,7 @@ export const facilitatorConfig = Object.freeze({
   sponsorPrivateKey: process.env.CCD_FACILITATOR_PRIVATE_KEY || "",
   apiToken: process.env.FACILITATOR_API_TOKEN || "",
   settlementEnabled: bool("FACILITATOR_SETTLEMENT_ENABLED"),
-  maxAmountMicroCcd: positiveInteger("FACILITATOR_MAX_AMOUNT_MICROCCD", "1000000"),
+  maxAmountMicroCcd,
   minSponsorBalanceMicroCcd: positiveInteger("FACILITATOR_MIN_SPONSOR_BALANCE_MICROCCD", "10000"),
   storePath: process.env.FACILITATOR_STORE_PATH || "./data/facilitator-settlements",
   grpcHost: "grpc.testnet.concordium.com",

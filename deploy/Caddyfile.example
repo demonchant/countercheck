@@ -1,0 +1,14 @@
+# Example reverse proxy for a dedicated Testnet seller host.
+# Set SELLER_RESOURCE_DOMAIN in Caddy's environment and
+# SELLER_RESOURCE_PUBLIC_URL=https://<domain>/resource in the seller service.
+# The local seller process listens on loopback port 4191; the facilitator stays private.
+
+{$SELLER_RESOURCE_DOMAIN} {
+	@countercheck path /resource /a2a/buyer/v1 /a2a/seller/v1
+	handle @countercheck {
+		reverse_proxy 127.0.0.1:4191
+	}
+	handle {
+		respond "not found" 404
+	}
+}

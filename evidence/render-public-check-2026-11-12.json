@@ -1,0 +1,20 @@
+﻿{
+  "observedAt": "2026-11-12T12:45:50Z",
+  "source": "direct HTTPS GET from Node fetch; TLS handshake succeeded",
+  "origin": "https://countercheck-zid6.onrender.com",
+  "checks": [
+    {
+      "url": "https://countercheck-zid6.onrender.com/",
+      "httpStatus": 502,
+      "xRenderRouting": "no-deploy"
+    },
+    {
+      "url": "https://countercheck-zid6.onrender.com/resource",
+      "httpStatus": 502,
+      "contentType": "text/html; charset=utf-8",
+      "xRenderRouting": "no-deploy"
+    }
+  ],
+  "challengeVerified": false,
+  "note": "The origin was HTTPS reachable, but Render had no successful deployment at the time of the request. This is a historical observation; later user-supplied logs show a deployment attempt running the wrong start command."
+}

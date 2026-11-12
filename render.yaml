@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: countercheck-seller-1146
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run seller
+    autoDeployTrigger: off
+    envVars:
+      - key: SELLER_RESOURCE_ENABLED
+        value: "true"
+      - key: SELLER_CHALLENGE_ONLY
+        value: "true"
+      - key: FACILITATOR_SETTLEMENT_ENABLED
+        value: "false"
+      - key: CONCORDIUM_NETWORK
+        value: ccd:4221332d34e1694168c2a0c0b3fd0f27
+      - key: PAYMENTS_ENABLED
+        value: "false"
+      - key: MAX_SPEND_MICROCCD
+        value: "1000000"
+      - key: BUYER_BADGE
+        sync: false
+      - key: CCD_ACCOUNT_ADDRESS
+        sync: false
+      - key: SELLER_BADGE
+        sync: false
+      - key: SELLER_PAY_TO
+        sync: false
+      - key: CCD_FACILITATOR_ADDRESS
+        sync: false

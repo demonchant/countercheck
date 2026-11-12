@@ -115,10 +115,11 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 200, await confirmPurchase(body.quoteId));
   }
   if (url.pathname === "/api/receipt/acknowledge") {
-    if (typeof body.recordId !== "string" || typeof body.transactionHash !== "string" || !/^0x[0-9a-f]{64}$/iu.test(body.transactionHash)) {
+    if (typeof body.recordId !== "string" || typeof body.transactionHash !== "string" || !/^(?:0x)?[0-9a-f]{64}$/iu.test(body.transactionHash)) {
       return sendJson(response, 400, { error: "A receipt id and 32-byte transaction hash are required." });
     }
-    const record = appendAudit({ status: "operator-recorded-explorer-check", parentId: body.recordId, transactionHash: body.transactionHash, independentCheck: true, note: "Operator-recorded explorer inspection; no automated CCDExplorer API read-back was made." });
+    const transactionHash = body.transactionHash.replace(/^0x/iu, "").toLowerCase();
+    const record = appendAudit({ status: "operator-recorded-explorer-check", parentId: body.recordId, transactionHash, independentCheck: true, note: "Operator-recorded explorer inspection; no automated CCDExplorer API read-back was made." });
     return sendJson(response, 200, { status: "recorded", record });
   }
   return sendJson(response, 404, { error: "Unknown endpoint." });

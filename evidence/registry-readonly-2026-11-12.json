@@ -1,0 +1,147 @@
+{
+  "provenance": "OBSERVED",
+  "observedAtUtc": "2026-11-12T12:46:04.954Z",
+  "network": "testnet",
+  "registryBase": "https://agent-registry-mcp.concordium.com",
+  "methods": [
+    "GET check-badge",
+    "GET verify-agent-card",
+    "MCP read-only agent_by_token_address",
+    "MCP read-only get_agent_wallet"
+  ],
+  "actions": "Read-only Registry inspection; no transaction was built, signed, or submitted",
+  "observations": [
+    {
+      "label": "buyer",
+      "badge": "JyP9WD3R9D4tgxwjcy8jc",
+      "checkBadge": {
+        "httpStatus": 200,
+        "body": {
+          "token_id": 1147,
+          "token_address": "JyP9WD3R9D4tgxwjcy8jc",
+          "agent_uri": null,
+          "http_status": null,
+          "card_sha256": null,
+          "on_chain": {
+            "owner_account": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+            "status": "Active",
+            "agent_uri": null,
+            "metadata_hash_hex": "289c7e7f4d3c891fa56963da7bf199ce872ab52228abf692c376d3a637a97d53"
+          },
+          "checks": {
+            "on_chain_agent_found": true,
+            "status_active": true,
+            "has_agent_uri": false
+          },
+          "badge_valid": false,
+          "issues": [
+            {
+              "severity": "error",
+              "field": "agent_uri",
+              "message": "no agent_uri set on chain — the agent has no card to check",
+              "expected": "an https URL to the agent card"
+            }
+          ],
+          "network": "testnet",
+          "expected": {
+            "chain": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+            "contracts": {
+              "cis8004": "12802,0",
+              "cis8": "12801,0"
+            }
+          }
+        }
+      },
+      "verifyAgentCard": {
+        "httpStatus": 200,
+        "body": {
+          "network": "testnet",
+          "token_id": "1147",
+          "on_chain_uri": null,
+          "on_chain_hash_hex": "289c7e7f4d3c891fa56963da7bf199ce872ab52228abf692c376d3a637a97d53",
+          "match": null
+        }
+      },
+      "agentRecord": {
+        "network": "testnet",
+        "token_address": "JyP9WD3R9D4tgxwjcy8jc",
+        "token_id": "1147",
+        "token_id_u64": 1147,
+        "owner_account": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+        "metadata_hash_hex": "289c7e7f4d3c891fa56963da7bf199ce872ab52228abf692c376d3a637a97d53",
+        "agent_wallet": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+        "status": "Active",
+        "registered_at": "2026-11-12T02:32:59.270+00:00"
+      },
+      "agentWallet": {
+        "agent_wallet": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x"
+      }
+    },
+    {
+      "label": "seller",
+      "badge": "JyP9WBwwDBZxrqhuqHWPt",
+      "checkBadge": {
+        "httpStatus": 200,
+        "body": {
+          "token_id": 1146,
+          "token_address": "JyP9WBwwDBZxrqhuqHWPt",
+          "agent_uri": null,
+          "http_status": null,
+          "card_sha256": null,
+          "on_chain": {
+            "owner_account": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+            "status": "Active",
+            "agent_uri": null,
+            "metadata_hash_hex": "fc0f1a6e90f7f5d60f06159e4a34638331bd200b31de8bd9e8bfe169c3a2f858"
+          },
+          "checks": {
+            "on_chain_agent_found": true,
+            "status_active": true,
+            "has_agent_uri": false
+          },
+          "badge_valid": false,
+          "issues": [
+            {
+              "severity": "error",
+              "field": "agent_uri",
+              "message": "no agent_uri set on chain — the agent has no card to check",
+              "expected": "an https URL to the agent card"
+            }
+          ],
+          "network": "testnet",
+          "expected": {
+            "chain": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+            "contracts": {
+              "cis8004": "12802,0",
+              "cis8": "12801,0"
+            }
+          }
+        }
+      },
+      "verifyAgentCard": {
+        "httpStatus": 200,
+        "body": {
+          "network": "testnet",
+          "token_id": "1146",
+          "on_chain_uri": null,
+          "on_chain_hash_hex": "fc0f1a6e90f7f5d60f06159e4a34638331bd200b31de8bd9e8bfe169c3a2f858",
+          "match": null
+        }
+      },
+      "agentRecord": {
+        "network": "testnet",
+        "token_address": "JyP9WBwwDBZxrqhuqHWPt",
+        "token_id": "1146",
+        "token_id_u64": 1146,
+        "owner_account": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+        "metadata_hash_hex": "fc0f1a6e90f7f5d60f06159e4a34638331bd200b31de8bd9e8bfe169c3a2f858",
+        "agent_wallet": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+        "status": "Active",
+        "registered_at": "2026-11-12T02:14:09.270+00:00"
+      },
+      "agentWallet": {
+        "agent_wallet": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7"
+      }
+    }
+  ]
+}

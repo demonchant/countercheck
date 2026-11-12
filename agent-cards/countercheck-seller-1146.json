@@ -1,27 +1,32 @@
 {
   "name": "Countercheck Test Seller 1146",
-  "description": "Existing Concordium Testnet seller identity. No seller resource API is currently configured or deployed; this agent does not currently serve paid resources or accept x402 payments.",
-  "url": "https://raw.githubusercontent.com/demonchant/countercheck/main/agent-cards/countercheck-seller-1146.json",
+  "description": "Concordium Testnet seller agent exposing a native CCD x402 v2 exact challenge and a read-only A2A offer query. The challenge is 1 CCD with a short expiry and the configured seller and sponsor addresses. Paid fulfillment is unavailable while facilitator settlement is disabled; a challenge is not evidence of payment.",
   "version": "1.0.0",
   "defaultInputModes": [
-    "text/markdown",
-    "application/json"
+    "text/plain"
   ],
   "defaultOutputModes": [
-    "text/markdown",
-    "application/json"
+    "text/plain"
   ],
-  "authentication": {
-    "schemes": []
-  },
-  "skills": [],
+  "skills": [
+    {
+      "id": "get-x402-offer",
+      "name": "Get x402 offer",
+      "description": "Fetches and validates the seller's current Concordium Testnet x402 v2 exact payment challenge. This read-only operation does not accept authorization, settle payment, or fulfill a paid request. Send the exact request get_x402_offer.",
+      "tags": [
+        "x402",
+        "ccd",
+        "testnet"
+      ]
+    }
+  ],
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
     "extensions": [
       {
         "uri": "https://docs.concordium.com/a2a-extensions/concordium-badge/v1",
-        "description": "Verified by Concordium badge — on-chain agent identity in a CIS-8004 registry",
+        "description": "Verified by Concordium badge: on-chain agent identity in a CIS-8004 registry",
         "required": false,
         "params": {
           "tokenAddress": "ccd:4221332d34e1694168c2a0c0b3fd0f27/cis-2:JyP9WBwwDBZxrqhuqHWPt",
@@ -33,8 +38,7 @@
             "cis8004": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12802.0",
             "cis8": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12801.0"
           },
-          "services": {},
-          "verify": "Resolve tokenAddress via CIS-8004 agent_of; confirm owner + status=Active + card SHA-256 == metadata_hash.",
+          "verify": "Resolve tokenAddress via CIS-8004 agent_of; confirm owner, Active status, and exact Agent Card SHA-256 metadata hash.",
           "verification": {
             "service": "Concordium Agent Registry",
             "verifyUrl": "https://agent-registry-mcp.concordium.com/v1/badge-check/JyP9WBwwDBZxrqhuqHWPt",
@@ -50,5 +54,33 @@
       "agentId": 1146,
       "agentRegistry": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12802.0"
     }
-  ]
+  ],
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "provider": {
+    "organization": "Countercheck",
+    "url": "https://github.com/demonchant/countercheck"
+  },
+  "supportedInterfaces": [
+    {
+      "url": "https://countercheck-zid6.onrender.com/a2a/seller/v1",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "securitySchemes": {},
+  "securityRequirements": [],
+  "services": [
+    {
+      "name": "A2A",
+      "endpoint": "https://countercheck-zid6.onrender.com/a2a/seller/v1",
+      "version": "1.0"
+    },
+    {
+      "name": "x402",
+      "endpoint": "https://countercheck-zid6.onrender.com/resource",
+      "version": "2"
+    }
+  ],
+  "x402Support": false,
+  "active": false
 }

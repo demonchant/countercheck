@@ -1,0 +1,35 @@
+﻿{
+    "provenance":  "OBSERVED",
+    "observedAtUtc":  "2026-11-12T10:58:49Z",
+    "endpoint":  "http://127.0.0.1:4180",
+    "requests":  [
+                     "GET /healthz",
+                     "GET /supported"
+                 ],
+    "health":  {
+                   "ok":  true,
+                   "network":  "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+                   "settlementEnabled":  false
+               },
+    "supported":  {
+                      "kinds":  [
+                                    {
+                                        "x402Version":  2,
+                                        "scheme":  "exact",
+                                        "network":  "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+                                        "extra":  {
+                                                      "feePayer":  "4izZERn99ZDyiJ1PjBisVvaHMRNXZ2iZeKfwzd3Qxk6jfQMgY1"
+                                                  }
+                                    }
+                                ],
+                      "extensions":  [
+
+                                     ],
+                      "signers":  {
+                                      "ccd:4221332d34e1694168c2a0c0b3fd0f27":  [
+                                                                                   "4izZERn99ZDyiJ1PjBisVvaHMRNXZ2iZeKfwzd3Qxk6jfQMgY1"
+                                                                               ]
+                                  }
+                  },
+    "note":  "Local facilitator configuration/capability only; no Concordium node query, signature, settlement, or transaction."
+}

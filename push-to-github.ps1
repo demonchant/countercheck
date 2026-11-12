@@ -40,6 +40,7 @@ $files = @(Get-ChildItem -LiteralPath $sourceRoot -File -Recurse -Force | Where-
     if ($parts.Count -eq 1 -and $excludedRootFiles -contains $parts[0]) { return $false }
     if ($relative -match '(^|/)\.env($|\.)' -and $relative -ne '.env.example') { return $false }
     if ($relative -match '(^|/)(\.npm-cache|\.cache)(/|$)' -or $relative -match '\.(pem|key|log)$') { return $false }
+    if ($_.Extension.ToLowerInvariant() -in @('.mp4', '.mov', '.webm', '.mkv', '.avi', '.mp3', '.wav', '.m4a')) { return $false }
     return $true
 } | Sort-Object FullName)
 

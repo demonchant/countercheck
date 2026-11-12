@@ -1,5 +1,7 @@
 import { settlementKey } from "./facilitator-store.mjs";
 
+const MAX_PAYMENT_MICROCCD = 1_000_000n;
+
 const TESTNET = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
 
 function responseFailure(network, errorReason, payer = "", transaction = "") {
@@ -27,7 +29,7 @@ export function validateFacilitatorRequest(paymentPayload, paymentRequirements, 
   if (paymentRequirements.scheme !== "exact" || paymentRequirements.network !== TESTNET || policy.network !== TESTNET) {
     return { ok: false, reason: "unsupported_network_or_scheme" };
   }
-  if (!Number.isInteger(paymentRequirements.maxTimeoutSeconds) || paymentRequirements.maxTimeoutSeconds <= 0 || paymentRequirements.maxTimeoutSeconds > 300) {
+  if (!Number.isInteger(paymentRequirements.maxTimeoutSeconds) || paymentRequirements.maxTimeoutSeconds <= 5 || paymentRequirements.maxTimeoutSeconds > 300) {
     return { ok: false, reason: "invalid_expiry_policy" };
   }
   if (!policy.sponsorAddress || paymentRequirements.extra?.feePayer !== policy.sponsorAddress) {
@@ -40,12 +42,17 @@ export function validateFacilitatorRequest(paymentPayload, paymentRequirements, 
   if (!policy.buyerAddress) return { ok: false, reason: "buyer_not_configured" };
   if (!/^[1-9]\d*$/u.test(paymentRequirements.amount || "")) return { ok: false, reason: "invalid_amount" };
   const amount = BigInt(paymentRequirements.amount);
-  if (amount > BigInt(policy.maxAmountMicroCcd)) return { ok: false, reason: "amount_over_policy_limit" };
+  if (amount > BigInt(policy.maxAmountMicroCcd) || amount > MAX_PAYMENT_MICROCCD) return { ok: false, reason: "amount_over_policy_limit" };
 
   const tx = paymentPayload.payload?.signedTransaction;
   const sponsor = tx?.header?.sponsor?.address ?? tx?.header?.sponsor?.account;
   if (!tx || tx.version !== 1 || tx.header?.sender !== policy.buyerAddress || sponsor !== policy.sponsorAddress) {
     return { ok: false, reason: "transaction_party_mismatch" };
+  }
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (!Number.isSafeInteger(tx.header?.nonce) || tx.header.nonce < 0) return { ok: false, reason: "invalid_nonce" };
+  if (!Number.isInteger(tx.header?.expiry) || tx.header.expiry <= nowSeconds || tx.header.expiry > nowSeconds + paymentRequirements.maxTimeoutSeconds) {
+    return { ok: false, reason: "invalid_or_expired_transaction" };
   }
   if (tx.payload?.type !== "transfer" || tx.payload?.toAddress !== policy.sellerPayTo || tx.payload?.amount !== paymentRequirements.amount) {
     return { ok: false, reason: "transaction_transfer_mismatch" };
@@ -75,7 +82,9 @@ export function createFacilitatorApi({ scheme, store, policy, getSponsorAvailabl
     }
   }
 
-  async function settle(paymentPayload, paymentRequirements) {
+  let settlementQueue = Promise.resolve();
+
+  async function settleLocked(paymentPayload, paymentRequirements) {
     const checked = validateFacilitatorRequest(paymentPayload, paymentRequirements, policy);
     if (!checked.ok) return responseFailure(policy.network, checked.reason, checked.payer || "");
     if (!policy.settlementEnabled) return responseFailure(policy.network, "settlement_disabled", checked.payer);
@@ -124,6 +133,16 @@ export function createFacilitatorApi({ scheme, store, policy, getSponsorAvailabl
     }
 
     try {
+      // Re-read the sponsor reserve immediately before the SDK's settle call.
+      // The pinned Concordium scheme then re-verifies buyer signature, expiry,
+      // current nonce, and buyer balance before it adds the sponsor signature.
+      let latestSponsorBalance;
+      try { latestSponsorBalance = BigInt(await getSponsorAvailableMicroCcd()); }
+      catch { return responseFailure(policy.network, "sponsor_balance_unavailable", checked.payer); }
+      if (latestSponsorBalance < BigInt(policy.minSponsorBalanceMicroCcd)) {
+        store.update(key, { status: "failed", failureCode: "insufficient_sponsor_reserve" });
+        return responseFailure(policy.network, "insufficient_sponsor_reserve", checked.payer);
+      }
       const result = await scheme.settle(paymentPayload, paymentRequirements);
       if (result?.success === true && result.network === policy.network && typeof result.transaction === "string" && result.transaction) {
         let finalizedInfo;
@@ -173,6 +192,18 @@ export function createFacilitatorApi({ scheme, store, policy, getSponsorAvailabl
     } catch {
       try { store.update(key, { status: "unresolved", failureCode: "settlement_outcome_unknown" }); } catch { /* Keep the original claim as a replay barrier. */ }
       return responseFailure(policy.network, "settlement_unresolved", checked.payer);
+    }
+  }
+
+  async function settle(paymentPayload, paymentRequirements) {
+    const previous = settlementQueue;
+    let release;
+    settlementQueue = new Promise((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return await settleLocked(paymentPayload, paymentRequirements);
+    } finally {
+      release();
     }
   }
 

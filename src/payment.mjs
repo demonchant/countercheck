@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { config, missingPaymentSettings } from "./config.mjs";
+import { config, MAX_PAYMENT_MICROCCD, missingPaymentSettings } from "./config.mjs";
 import { appendAudit } from "./audit.mjs";
 import { inspectBadge } from "./registry.mjs";
 
@@ -24,40 +24,43 @@ function candidatesFrom(payload) {
   return [];
 }
 
-export function inspectRequirement(requirement) {
+export function inspectRequirement(requirement, policy = config) {
   const amount = requirement?.amount ?? requirement?.maxAmountRequired;
   const payTo = requirement?.payTo;
   const asset = requirement?.asset;
   const network = requirement?.network;
   const scheme = requirement?.scheme;
   if (scheme !== "exact") return { ok: false, reason: "Only the exact x402 payment scheme is allowed." };
-  if (network !== config.network) return { ok: false, reason: "The x402 quote is not for Concordium testnet." };
-  if (asset !== config.asset && asset !== `${config.network}/slip44:919`) return { ok: false, reason: "The x402 quote is not for the configured native CCD asset." };
+  if (network !== policy.network) return { ok: false, reason: "The x402 quote is not for Concordium testnet." };
+  if (asset !== policy.asset) return { ok: false, reason: "The x402 quote is not for the configured native CCD asset." };
   if (typeof amount !== "string" || !/^\d+$/u.test(amount)) return { ok: false, reason: "The x402 amount is missing or malformed." };
-  if (BigInt(amount) <= 0n || BigInt(amount) > BigInt(config.maxSpendMicroCcd)) return { ok: false, reason: "The requested amount exceeds the configured spend ceiling." };
-  if (payTo !== config.sellerPayTo) return { ok: false, reason: "The x402 recipient does not match the configured seller payment wallet." };
+  const configuredCap = policy.maxSpendMicroCcd ? BigInt(policy.maxSpendMicroCcd) : 0n;
+  if (configuredCap <= 0n || configuredCap > MAX_PAYMENT_MICROCCD) return { ok: false, reason: "The configured buyer spend ceiling must be between 1 microCCD and 1 CCD." };
+  if (BigInt(amount) <= 0n || BigInt(amount) > configuredCap || BigInt(amount) > MAX_PAYMENT_MICROCCD) return { ok: false, reason: "The requested amount exceeds the configured or hard 1 CCD spend ceiling." };
+  if (payTo !== policy.sellerPayTo) return { ok: false, reason: "The x402 recipient does not match the configured seller payment wallet." };
   const expirySeconds = requirement?.maxTimeoutSeconds;
-  if (typeof expirySeconds !== "number" || expirySeconds <= 0 || expirySeconds > 300) return { ok: false, reason: "The quote expiry is missing or outside the accepted 5-minute maximum." };
+  if (!Number.isInteger(expirySeconds) || expirySeconds <= 5 || expirySeconds > 300) return { ok: false, reason: "The quote expiry must be an integer from 6 through 300 seconds." };
   const feePayer = requirement?.extra?.feePayer ?? requirement?.feePayer;
   if (typeof feePayer !== "string" || feePayer.length < 8) return { ok: false, reason: "The quote does not identify the sponsored fee payer." };
-  if (!config.sponsorAddress) return { ok: false, reason: "The configured sponsor fee payer is missing." };
-  if (feePayer !== config.sponsorAddress) return { ok: false, reason: "The quote fee payer does not match the configured sponsor." };
+  if (!policy.sponsorAddress) return { ok: false, reason: "The configured sponsor fee payer is missing." };
+  if (feePayer !== policy.sponsorAddress) return { ok: false, reason: "The quote fee payer does not match the configured sponsor." };
   return {
     ok: true,
     summary: { scheme, network, asset, amountMicroCcd: amount, payTo, maxTimeoutSeconds: expirySeconds, feePayer },
   };
 }
 
-function parseChallenge(response) {
+export function parseChallenge(response, policy = config) {
   if (response.status !== 402) return { error: `Expected HTTP 402, received ${response.status}.` };
   const payload = parsePaymentRequired(response);
   if (!payload) return { error: "The 402 response did not contain a readable x402 payment challenge." };
+  if (payload.x402Version !== 2) return { error: "Only x402 v2 payment challenges are supported." };
   const requirements = candidatesFrom(payload);
   for (const requirement of requirements) {
-    const check = inspectRequirement(requirement);
+    const check = inspectRequirement(requirement, policy);
     if (check.ok) return { payload, requirement, summary: check.summary };
   }
-  const firstFailure = requirements.map(inspectRequirement).find((result) => !result.ok);
+  const firstFailure = requirements.map((requirement) => inspectRequirement(requirement, policy)).find((result) => !result.ok);
   return { error: firstFailure?.reason || "The x402 challenge did not offer a supported payment requirement." };
 }
 
@@ -107,21 +110,15 @@ export async function createQuote() {
   }
 }
 
-function paymentTransaction(response) {
+export function paymentTransaction(response) {
   const encoded = response.headers.get("payment-response") || response.headers.get("x-payment-response");
   if (!encoded) return null;
   for (const value of [encoded, Buffer.from(encoded, "base64url").toString("utf8")]) {
     try {
       const payload = JSON.parse(value);
-      const stack = [payload];
-      while (stack.length) {
-        const item = stack.pop();
-        if (!item || typeof item !== "object") continue;
-        for (const key of ["transactionHash", "transaction_hash", "txHash", "tx_hash"]) {
-          if (typeof item[key] === "string" && /^0x[0-9a-f]{64}$/iu.test(item[key])) return item[key];
-        }
-        stack.push(...Object.values(item).filter((child) => child && typeof child === "object"));
-      }
+      if (payload?.success !== true || payload.network !== config.network || typeof payload.transaction !== "string") continue;
+      if (!/^(?:0x)?[0-9a-f]{64}$/iu.test(payload.transaction)) continue;
+      return payload.transaction.replace(/^0x/iu, "").toLowerCase();
     } catch { /* Try the other encoding. */ }
   }
   return null;

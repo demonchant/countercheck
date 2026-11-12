@@ -1,0 +1,30 @@
+﻿{
+    "provenance":  "OBSERVED",
+    "observedAtUtc":  "2026-11-12T10:58:17Z",
+    "method":  "GET",
+    "endpoint":  "http://127.0.0.1:4190/resource",
+    "httpStatus":  402,
+    "action":  "Read-only challenge fetch; no PAYMENT-SIGNATURE was sent",
+    "challenge":  {
+                      "x402Version":  2,
+                      "error":  "Payment required",
+                      "resource":  {
+                                       "url":  "http://127.0.0.1:4190/resource",
+                                       "description":  "Countercheck one-time Testnet resource (1 CCD)",
+                                       "mimeType":  "application/json"
+                                   },
+                      "accepts":  [
+                                      {
+                                          "scheme":  "exact",
+                                          "network":  "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+                                          "amount":  "1000000",
+                                          "asset":  "CCD",
+                                          "payTo":  "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+                                          "maxTimeoutSeconds":  60,
+                                          "extra":  {
+                                                        "feePayer":  "4izZERn99ZDyiJ1PjBisVvaHMRNXZ2iZeKfwzd3Qxk6jfQMgY1"
+                                                    }
+                                      }
+                                  ]
+                  }
+}

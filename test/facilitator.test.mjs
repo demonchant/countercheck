@@ -70,24 +70,34 @@ function memoryStore() {
   };
 }
 
-function fixture({ verifyResult = { isValid: true, payer: buyer }, settleResult = { success: true, transaction: "a".repeat(64), network, payer: buyer }, finalizedInfo = { status: "finalized", sender: buyer, recipient: seller, amount: "125000", asset: "CCD" }, balance = 50000n, enabled = true } = {}) {
-  const calls = { verify: 0, settle: 0 };
+function fixture({ verifyResult = { isValid: true, payer: buyer }, settleResult = { success: true, transaction: "a".repeat(64), network, payer: buyer }, finalizedInfo = { status: "finalized", sender: buyer, recipient: seller, amount: "125000", asset: "CCD" }, balance = 50000n, enabled = true, settleDelayMs = 0 } = {}) {
+  const calls = { verify: 0, settle: 0, activeSettles: 0, maxConcurrentSettles: 0, sponsorBalance: 0 };
   const scheme = {
     async verify() { calls.verify += 1; return verifyResult; },
-    async settle() { calls.settle += 1; return settleResult; },
+    async settle() {
+      calls.settle += 1;
+      calls.activeSettles += 1;
+      calls.maxConcurrentSettles = Math.max(calls.maxConcurrentSettles, calls.activeSettles);
+      if (settleDelayMs) await new Promise((resolve) => setTimeout(resolve, settleDelayMs));
+      calls.activeSettles -= 1;
+      return settleResult;
+    },
   };
   const store = memoryStore();
   const api = createFacilitatorApi({
     scheme,
     store,
     policy: { ...policy, settlementEnabled: enabled },
-    getSponsorAvailableMicroCcd: async () => balance,
+    getSponsorAvailableMicroCcd: async () => {
+      calls.sponsorBalance += 1;
+      return typeof balance === "function" ? balance(calls.sponsorBalance) : balance;
+    },
     getFinalizedTransactionInfo: async () => finalizedInfo,
   });
   return { api, calls, store };
 }
 
-test("successful Testnet settlement finalizes once and records only a receipt", async () => {
+test("successful mocked Testnet settlement finalizes once and records only a receipt", async () => {
   const { api, calls, store } = fixture();
   const { paymentPayload, paymentRequirements } = request();
   const result = await api.settle(paymentPayload, paymentRequirements);
@@ -167,6 +177,16 @@ test("insufficient sponsor reserve refuses before sponsor signing or submission"
   assert.equal(store.records.size, 0);
 });
 
+test("sponsor reserve is rechecked immediately before the SDK settlement call", async () => {
+  const { api, calls, store } = fixture({ balance: (read) => read === 1 ? 50000n : 9999n });
+  const { paymentPayload, paymentRequirements } = request();
+  const result = await api.settle(paymentPayload, paymentRequirements);
+  assert.equal(result.errorReason, "insufficient_sponsor_reserve");
+  assert.equal(calls.sponsorBalance, 2);
+  assert.equal(calls.settle, 0);
+  assert.equal([...store.records.values()][0].status, "failed");
+});
+
 test("wrong recipient, wrong network, and over-cap amount are rejected", async (context) => {
   for (const [name, mutate, reason] of [
     ["recipient", (r) => { r.paymentRequirements.payTo = buyer; r.paymentPayload.accepted.payTo = buyer; }, "recipient_mismatch"],
@@ -180,6 +200,55 @@ test("wrong recipient, wrong network, and over-cap amount are rejected", async (
       const result = await api.settle(value.paymentPayload, value.paymentRequirements);
       assert.equal(result.success, false);
       assert.equal(result.errorReason, reason);
+      assert.equal(calls.verify, 0);
+      assert.equal(calls.settle, 0);
+    });
+  }
+});
+
+test("wrong asset, sender, sponsor, nonce, and transaction expiry are rejected before verification", async (context) => {
+  const cases = [
+    ["asset", (value) => { value.paymentRequirements.asset = "EURR"; value.paymentPayload.accepted.asset = "EURR"; }, "unsupported_asset"],
+    ["sender", (value) => { value.paymentPayload.payload.signedTransaction.header.sender = seller; }, "transaction_party_mismatch"],
+    ["sponsor", (value) => { value.paymentPayload.payload.signedTransaction.header.sponsor.address = buyer; }, "transaction_party_mismatch"],
+    ["nonce", (value) => { value.paymentPayload.payload.signedTransaction.header.nonce = -1; }, "invalid_nonce"],
+    ["expired transaction", (value) => { value.paymentPayload.payload.signedTransaction.header.expiry = Math.floor(Date.now() / 1000) - 1; }, "invalid_or_expired_transaction"],
+    ["expiry beyond challenge", (value) => { value.paymentPayload.payload.signedTransaction.header.expiry = Math.floor(Date.now() / 1000) + 301; }, "invalid_or_expired_transaction"],
+  ];
+  for (const [name, mutate, expected] of cases) {
+    await context.test(name, async () => {
+      const { api, calls } = fixture();
+      const value = request(); mutate(value);
+      const result = await api.settle(value.paymentPayload, value.paymentRequirements);
+      assert.equal(result.errorReason, expected);
+      assert.equal(calls.verify, 0);
+      assert.equal(calls.settle, 0);
+    });
+  }
+});
+
+test("facilitator rejects missing or incorrect payment requirement fields before verification", async (context) => {
+  const cases = [
+    ["missing required fee payer", (value) => { delete value.paymentRequirements.extra; delete value.paymentPayload.accepted.extra; }, "fee_payer_mismatch"],
+    ["accepted quote omits fee payer", (value) => { delete value.paymentPayload.accepted.extra; }, "requirements_mismatch"],
+    ["wrong required fee payer", (value) => { value.paymentRequirements.extra.feePayer = buyer; value.paymentPayload.accepted.extra.feePayer = buyer; }, "fee_payer_mismatch"],
+    ["missing asset", (value) => { delete value.paymentRequirements.asset; delete value.paymentPayload.accepted.asset; }, "unsupported_asset"],
+    ["missing amount", (value) => { delete value.paymentRequirements.amount; delete value.paymentPayload.accepted.amount; }, "invalid_amount"],
+    ["missing recipient", (value) => { delete value.paymentRequirements.payTo; delete value.paymentPayload.accepted.payTo; }, "recipient_mismatch"],
+    ["missing network", (value) => { delete value.paymentRequirements.network; delete value.paymentPayload.accepted.network; }, "unsupported_network_or_scheme"],
+    ["missing expiry", (value) => { delete value.paymentRequirements.maxTimeoutSeconds; delete value.paymentPayload.accepted.maxTimeoutSeconds; }, "invalid_expiry_policy"],
+    ["missing transaction sponsor", (value) => { delete value.paymentPayload.payload.signedTransaction.header.sponsor; }, "transaction_party_mismatch"],
+    ["missing transfer amount", (value) => { delete value.paymentPayload.payload.signedTransaction.payload.amount; }, "transaction_transfer_mismatch"],
+    ["missing transfer recipient", (value) => { delete value.paymentPayload.payload.signedTransaction.payload.toAddress; }, "transaction_transfer_mismatch"],
+  ];
+  for (const [name, mutate, expected] of cases) {
+    await context.test(name, async () => {
+      const { api, calls } = fixture();
+      const value = request();
+      mutate(value);
+      const result = await api.settle(value.paymentPayload, value.paymentRequirements);
+      assert.equal(result.success, false);
+      assert.equal(result.errorReason, expected);
       assert.equal(calls.verify, 0);
       assert.equal(calls.settle, 0);
     });
@@ -227,8 +296,22 @@ test("concurrent duplicate requests claim the payload only once", async () => {
     api.settle(paymentPayload, paymentRequirements),
     api.settle(paymentPayload, paymentRequirements),
   ]);
-  assert.equal(results.filter((result) => result.success).length, 1);
+  assert.equal(results.filter((result) => result.success).length, 2);
   assert.equal(calls.settle, 1);
+});
+
+test("distinct sponsored settlements are serialized for one configured sponsor", async () => {
+  const { api, calls } = fixture({ settleDelayMs: 15 });
+  const first = request();
+  const second = request();
+  second.paymentPayload.payload.signedTransaction.header.nonce = 5;
+  const results = await Promise.all([
+    api.settle(first.paymentPayload, first.paymentRequirements),
+    api.settle(second.paymentPayload, second.paymentRequirements),
+  ]);
+  assert.equal(results.every((result) => result.success), true);
+  assert.equal(calls.settle, 2);
+  assert.equal(calls.maxConcurrentSettles, 1);
 });
 
 test("a failed on-chain payment is recorded and never resubmitted", async () => {

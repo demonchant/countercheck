@@ -1,0 +1,158 @@
+{
+  "provenance": "OBSERVED_REGISTRY_BUILDER_RESPONSE",
+  "preparedAtUtc": "2026-11-12T11:49:20.840Z",
+  "network": "testnet",
+  "action": "Prepared unsigned CIS-8004 setAgentURI parameter previews only; no account transaction was signed or submitted",
+  "sourceCommit": "3ca4f3b6398cede158c8196ff4b118029820b986",
+  "updates": [
+    {
+      "agent": "buyer",
+      "badge": "JyP9WD3R9D4tgxwjcy8jc",
+      "tokenId": 1147,
+      "currentStatus": "Active",
+      "currentAgentUri": null,
+      "currentOnChainHash": "289c7e7f4d3c891fa56963da7bf199ce872ab52228abf692c376d3a637a97d53",
+      "proposedAgentUri": "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-buyer-1147.json",
+      "publicHttpStatus": 200,
+      "servedByteLength": 2915,
+      "proposedSha256": "af92a669f19f9a9ee942ce97b9791a0e592cbcacde096332a2e230cb05627e89",
+      "requiredSigner": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+      "registryBuilderHttpStatus": 200,
+      "unsignedRegistryBuilderResponse": {
+        "network": "testnet",
+        "contract_address": {
+          "index": 12802,
+          "subindex": 0
+        },
+        "receive_name": "CIS-8004.setAgentURI",
+        "parameter_json": {
+          "token_id": "7b04000000000000",
+          "agent_uri": {
+            "Some": [
+              "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-buyer-1147.json"
+            ]
+          },
+          "metadata_hash": {
+            "Some": [
+              [
+                175,
+                146,
+                166,
+                105,
+                241,
+                159,
+                154,
+                158,
+                233,
+                66,
+                206,
+                151,
+                185,
+                121,
+                26,
+                14,
+                89,
+                44,
+                188,
+                172,
+                222,
+                9,
+                99,
+                50,
+                162,
+                226,
+                48,
+                203,
+                5,
+                98,
+                126,
+                137
+              ]
+            ]
+          }
+        },
+        "parameter_hex": "087b04000000000000018b00000068747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f64656d6f6e6368616e742f636f756e746572636865636b2f336361346633623633393863656465313538633831393666663462313138303239383230623938362f6167656e742d63617264732f636f756e746572636865636b2d62757965722d313134372e6a736f6e01af92a669f19f9a9ee942ce97b9791a0e592cbcacde096332a2e230cb05627e89",
+        "suggested_energy": 30000,
+        "sender": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+        "notes": [
+          "token_id is encoded in CIS-2 TokenIdU64 form: [0x08][8 LE bytes] (9 bytes total). See CIS-8004 v1.1 §4.2.1."
+        ]
+      }
+    },
+    {
+      "agent": "seller",
+      "badge": "JyP9WBwwDBZxrqhuqHWPt",
+      "tokenId": 1146,
+      "currentStatus": "Active",
+      "currentAgentUri": null,
+      "currentOnChainHash": "fc0f1a6e90f7f5d60f06159e4a34638331bd200b31de8bd9e8bfe169c3a2f858",
+      "proposedAgentUri": "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-seller-1146.json",
+      "publicHttpStatus": 200,
+      "servedByteLength": 2167,
+      "proposedSha256": "98dc0eab2eee124c3af8103d0c8bf502744c41ff5d13f048c42e214b358089b0",
+      "requiredSigner": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+      "registryBuilderHttpStatus": 200,
+      "unsignedRegistryBuilderResponse": {
+        "network": "testnet",
+        "contract_address": {
+          "index": 12802,
+          "subindex": 0
+        },
+        "receive_name": "CIS-8004.setAgentURI",
+        "parameter_json": {
+          "token_id": "7a04000000000000",
+          "agent_uri": {
+            "Some": [
+              "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-seller-1146.json"
+            ]
+          },
+          "metadata_hash": {
+            "Some": [
+              [
+                152,
+                220,
+                14,
+                171,
+                46,
+                238,
+                18,
+                76,
+                58,
+                248,
+                16,
+                61,
+                12,
+                139,
+                245,
+                2,
+                116,
+                76,
+                65,
+                255,
+                93,
+                19,
+                240,
+                72,
+                196,
+                46,
+                33,
+                75,
+                53,
+                128,
+                137,
+                176
+              ]
+            ]
+          }
+        },
+        "parameter_hex": "087a04000000000000018c00000068747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f64656d6f6e6368616e742f636f756e746572636865636b2f336361346633623633393863656465313538633831393666663462313138303239383230623938362f6167656e742d63617264732f636f756e746572636865636b2d73656c6c65722d313134362e6a736f6e0198dc0eab2eee124c3af8103d0c8bf502744c41ff5d13f048c42e214b358089b0",
+        "suggested_energy": 30000,
+        "sender": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+        "notes": [
+          "token_id is encoded in CIS-2 TokenIdU64 form: [0x08][8 LE bytes] (9 bytes total). See CIS-8004 v1.1 §4.2.1."
+        ]
+      }
+    }
+  ],
+  "caveat": "These previews pin the current published Agent Card bytes. Rebuild them if final card content or public URI changes."
+}

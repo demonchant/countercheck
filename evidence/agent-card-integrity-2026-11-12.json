@@ -1,0 +1,72 @@
+{
+  "provenance": "OBSERVED_PUBLIC_GITHUB_AND_SAVED_TESTNET_REGISTRY_READS",
+  "observedAtUtc": "2026-11-12T12:17:27.380Z",
+  "historyApi": "https://api.github.com/repos/demonchant/countercheck/commits?path={card_path}&per_page=100",
+  "sourceCommit": "3ca4f3b6398cede158c8196ff4b118029820b986",
+  "actions": "Public GET only; no GitHub write or Registry transaction",
+  "results": [
+    {
+      "label": "buyer",
+      "badge": "JyP9WD3R9D4tgxwjcy8jc",
+      "registrationTimestamp": "2026-11-12T02:32:59.270+00:00",
+      "owner": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+      "agentWallet": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+      "agentUri": null,
+      "onChainHash": "289c7e7f4d3c891fa56963da7bf199ce872ab52228abf692c376d3a637a97d53",
+      "local": {
+        "bytes": 2915,
+        "sha256": "af92a669f19f9a9ee942ce97b9791a0e592cbcacde096332a2e230cb05627e89"
+      },
+      "currentPublic": {
+        "url": "https://raw.githubusercontent.com/demonchant/countercheck/main/agent-cards/countercheck-buyer-1147.json",
+        "httpStatus": 200,
+        "bytes": 2915,
+        "sha256": "af92a669f19f9a9ee942ce97b9791a0e592cbcacde096332a2e230cb05627e89",
+        "matchesLocalBytes": true
+      },
+      "commitHistoryHttpStatus": 200,
+      "commitVersionsExamined": [
+        {
+          "commit": "3ca4f3b6398cede158c8196ff4b118029820b986",
+          "committedAt": "2026-11-12T03:47:30Z",
+          "message": "Publish Concordium Agent Cards",
+          "url": "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-buyer-1147.json",
+          "sha256": "af92a669f19f9a9ee942ce97b9791a0e592cbcacde096332a2e230cb05627e89",
+          "matchesCurrentOnChainHash": false
+        }
+      ]
+    },
+    {
+      "label": "seller",
+      "badge": "JyP9WBwwDBZxrqhuqHWPt",
+      "registrationTimestamp": "2026-11-12T02:14:09.270+00:00",
+      "owner": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+      "agentWallet": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+      "agentUri": null,
+      "onChainHash": "fc0f1a6e90f7f5d60f06159e4a34638331bd200b31de8bd9e8bfe169c3a2f858",
+      "local": {
+        "bytes": 2167,
+        "sha256": "98dc0eab2eee124c3af8103d0c8bf502744c41ff5d13f048c42e214b358089b0"
+      },
+      "currentPublic": {
+        "url": "https://raw.githubusercontent.com/demonchant/countercheck/main/agent-cards/countercheck-seller-1146.json",
+        "httpStatus": 200,
+        "bytes": 2167,
+        "sha256": "98dc0eab2eee124c3af8103d0c8bf502744c41ff5d13f048c42e214b358089b0",
+        "matchesLocalBytes": true
+      },
+      "commitHistoryHttpStatus": 200,
+      "commitVersionsExamined": [
+        {
+          "commit": "3ca4f3b6398cede158c8196ff4b118029820b986",
+          "committedAt": "2026-11-12T03:47:30Z",
+          "message": "Publish Concordium Agent Cards",
+          "url": "https://raw.githubusercontent.com/demonchant/countercheck/3ca4f3b6398cede158c8196ff4b118029820b986/agent-cards/countercheck-seller-1146.json",
+          "sha256": "98dc0eab2eee124c3af8103d0c8bf502744c41ff5d13f048c42e214b358089b0",
+          "matchesCurrentOnChainHash": false
+        }
+      ]
+    }
+  ],
+  "conclusion": "The local files match the current public raw copies. Their observed hashes do not match the on-chain hashes. No matching version was found in the returned public path history; the original hash preimages remain unknown."
+}

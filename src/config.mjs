@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { renderResourceUrl } from "./seller-resource-config.mjs";
 
 function loadLocalEnv() {
   try {
@@ -29,6 +30,8 @@ const readPositiveInteger = (name) => {
   return value;
 };
 
+export const MAX_PAYMENT_MICROCCD = 1_000_000n;
+
 const hostname = process.env.HOST || "127.0.0.1";
 if (!new Set(["127.0.0.1", "localhost", "::1"]).has(hostname)) {
   throw new Error("HOST must be loopback. Add authenticated access before exposing this service.");
@@ -47,10 +50,15 @@ if (network !== "ccd:4221332d34e1694168c2a0c0b3fd0f27") {
 
 const asset = process.env.SELLER_ASSET || "CCD";
 if (asset !== "CCD") throw new Error("SELLER_ASSET is fixed to native CCD in this build");
+const maxSpendMicroCcd = readPositiveInteger("MAX_SPEND_MICROCCD");
+if (maxSpendMicroCcd && BigInt(maxSpendMicroCcd) > MAX_PAYMENT_MICROCCD) {
+  throw new Error("MAX_SPEND_MICROCCD cannot exceed the hard 1 CCD buyer limit");
+}
 const port = Number(process.env.PORT || 4173);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("PORT must be an integer from 1024 through 65535");
 
-const resource = process.env.SELLER_RESOURCE_URL || "";
+const renderResource = process.env.RENDER === "true" ? renderResourceUrl(process.env.RENDER_EXTERNAL_URL || "") : "";
+const resource = process.env.SELLER_RESOURCE_URL || renderResource;
 if (resource) {
   const resourceUrl = new URL(resource);
   if (resourceUrl.protocol !== "https:" && !(resourceUrl.protocol === "http:" && ["localhost", "127.0.0.1"].includes(resourceUrl.hostname))) {
@@ -68,7 +76,7 @@ export const config = Object.freeze({
   buyerBadge: process.env.BUYER_BADGE || "",
   sellerPayTo: process.env.SELLER_PAY_TO || "",
   sellerResourceUrl: resource,
-  maxSpendMicroCcd: readPositiveInteger("MAX_SPEND_MICROCCD"),
+  maxSpendMicroCcd,
   paymentsEnabled: readBool("PAYMENTS_ENABLED"),
   accountAddress: process.env.CCD_ACCOUNT_ADDRESS || "",
   sponsorAddress: process.env.CCD_FACILITATOR_ADDRESS || "",
@@ -82,6 +90,7 @@ export function missingPaymentSettings() {
   if (!config.sellerBadge) missing.push("SELLER_BADGE");
   if (!config.buyerBadge) missing.push("BUYER_BADGE");
   if (!config.sellerPayTo) missing.push("SELLER_PAY_TO");
+  if (!config.sponsorAddress) missing.push("CCD_FACILITATOR_ADDRESS");
   if (!config.sellerResourceUrl) missing.push("SELLER_RESOURCE_URL");
   if (!config.maxSpendMicroCcd) missing.push("MAX_SPEND_MICROCCD");
   if (!config.accountAddress) missing.push("CCD_ACCOUNT_ADDRESS");
