@@ -1,0 +1,75 @@
+{
+  "name": "Countercheck Buyer Gate",
+  "description": "A local buyer-side agent that checks Concordium Agent Registry identities and compares seller native CCD x402 payment terms with a fixed spend cap before human review. Payment signing is currently disabled. Its MCP tools use local stdio; no public A2A or HTTP agent endpoint is deployed.",
+  "url": "https://raw.githubusercontent.com/demonchant/countercheck/main/agent-cards/countercheck-buyer-1147.json",
+  "version": "1.0.0",
+  "defaultInputModes": [
+    "text/markdown",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "text/markdown",
+    "application/json"
+  ],
+  "authentication": {
+    "schemes": []
+  },
+  "skills": [
+    {
+      "id": "verify-counterparties",
+      "name": "Verify counterparties",
+      "description": "Checks active Concordium agent identity, Agent Card integrity, and registered payment-wallet associations.",
+      "tags": [
+        "concordium",
+        "identity",
+        "registry"
+      ]
+    },
+    {
+      "id": "request-purchase-quote",
+      "name": "Request purchase quote",
+      "description": "Reads a seller x402 challenge and validates its native CCD payment terms against the configured spend cap. Requires a configured live seller resource URL.",
+      "tags": [
+        "x402",
+        "quote",
+        "ccd"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "extensions": [
+      {
+        "uri": "https://docs.concordium.com/a2a-extensions/concordium-badge/v1",
+        "description": "Verified by Concordium badge — on-chain agent identity in a CIS-8004 registry",
+        "required": false,
+        "params": {
+          "tokenAddress": "ccd:4221332d34e1694168c2a0c0b3fd0f27/cis-2:JyP9WD3R9D4tgxwjcy8jc",
+          "owner": {
+            "account": "ccd:4221332d34e1694168c2a0c0b3fd0f27:3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x"
+          },
+          "agentWallet": "ccd:4221332d34e1694168c2a0c0b3fd0f27:3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+          "contracts": {
+            "cis8004": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12802.0",
+            "cis8": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12801.0"
+          },
+          "services": {},
+          "verify": "Resolve tokenAddress via CIS-8004 agent_of; confirm owner + status=Active + card SHA-256 == metadata_hash.",
+          "verification": {
+            "service": "Concordium Agent Registry",
+            "verifyUrl": "https://agent-registry-mcp.concordium.com/v1/badge-check/JyP9WD3R9D4tgxwjcy8jc",
+            "mcp": "https://agent-registry-mcp.concordium.com/mcp",
+            "docs": "https://docs.concordium.com/en/mainnet/technical-reference/agent-registry/concordium-badge.html"
+          }
+        }
+      }
+    ]
+  },
+  "registrations": [
+    {
+      "agentId": 1147,
+      "agentRegistry": "ccd:4221332d34e1694168c2a0c0b3fd0f27:12802.0"
+    }
+  ]
+}
