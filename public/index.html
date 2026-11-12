@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f0efe9">
+    <meta name="description" content="Check an agent's accountability before buying a paid service.">
+    <title>Countercheck — verify before you pay</title>
+    <link rel="stylesheet" href="/assets/app.css">
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Countercheck home"><span class="brand-mark" aria-hidden="true">cc</span> countercheck</a>
+      <div class="network"><span class="network-dot" aria-hidden="true"></span><span>Concordium testnet</span><span id="payment-mode" class="mode-tag">PAYMENTS OFF</span></div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="eyebrow"><span>AGENT COMMERCE / BUYER CONTROL</span><span>01 — 04</span></div>
+        <div class="intro-grid">
+          <div>
+            <h1>Know who<br>stands <em>behind it.</em></h1>
+            <p class="lede">Check an agent's verified owner and payment wallet before your agent buys a service. Keep a receipt that ties the check to the result.</p>
+          </div>
+          <aside class="principle">
+            <span class="principle-index">THE RULE</span>
+            <strong>A badge is a link to accountability.<br>It is not an endorsement.</strong>
+            <a href="https://www.concordium.com/article/the-verified-by-concordium-badge-the-trust-mark-that-travels-with-your-agent" target="_blank" rel="noreferrer">How the badge works ↗</a>
+          </aside>
+        </div>
+      </section>
+
+      <section class="workspace" aria-labelledby="flow-title">
+        <div class="section-head">
+          <div><span class="eyebrow">BUYER AGENT / LIVE CHECK</span><h2 id="flow-title">Counterparty check</h2></div>
+          <p id="registry-state" class="state-chip state-idle"><span class="state-dot"></span><span>Ready for a badge</span></p>
+        </div>
+
+        <div class="flow-grid">
+          <div class="form-panel">
+            <label for="badge">Seller's Concordium badge</label>
+            <div class="input-row">
+              <input id="badge" name="badge" autocomplete="off" spellcheck="false" maxlength="120" placeholder="Paste the CIS-8004 badge address" aria-describedby="badge-help">
+              <button id="verify" class="button button-dark" type="button">Check badge <span aria-hidden="true">↗</span></button>
+            </div>
+            <p id="badge-help" class="help">A read-only lookup checks the active Registry entry and the Agent Card hash on Concordium testnet.</p>
+            <div id="verification-result" class="verification-result" aria-live="polite" hidden></div>
+
+            <div class="divider"></div>
+            <div class="purchase-head"><div><span class="eyebrow">PAID REQUEST</span><h3>Review before purchase</h3></div><span class="locked-tag"><span aria-hidden="true">⌑</span> User approval</span></div>
+            <p class="help">A quote is available only after the configured seller passes verification. The server uses a local testnet agent key; the key never enters this page.</p>
+            <button id="quote" class="button button-outline" type="button" disabled>Get payment quote</button>
+            <div id="quote-panel" class="quote-panel" aria-live="polite" hidden></div>
+          </div>
+
+          <aside class="steps-panel" aria-label="Purchase sequence">
+            <div class="step-row is-current" data-step="verify"><span class="step-number">01</span><div><strong>Verify seller</strong><small>Active badge + card hash</small></div><span class="step-mark" aria-hidden="true">—</span></div>
+            <div class="step-row" data-step="policy"><span class="step-number">02</span><div><strong>Check policy</strong><small>Recipient + exact spend cap</small></div><span class="step-mark" aria-hidden="true">—</span></div>
+            <div class="step-row" data-step="pay"><span class="step-number">03</span><div><strong>Approve &amp; pay</strong><small>Sponsored testnet transaction</small></div><span class="step-mark" aria-hidden="true">—</span></div>
+            <div class="step-row" data-step="receipt"><span class="step-number">04</span><div><strong>Read the receipt</strong><small>Response digest + explorer link</small></div><span class="step-mark" aria-hidden="true">—</span></div>
+            <div class="privacy-note"><span aria-hidden="true">◌</span><p>The badge reveals neither the owner's name nor their identity documents. The check confirms a registration and card integrity, not how the agent behaves.</p></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="ledger" aria-labelledby="ledger-title">
+        <div class="section-head">
+          <div><span class="eyebrow">LOCAL RECORDS / HASH-LINKED</span><h2 id="ledger-title">Recent receipts</h2></div>
+          <span id="receipt-count" class="record-count">No records loaded</span>
+        </div>
+        <div id="receipts" class="receipt-list" aria-live="polite"><p class="empty-state">A receipt appears here only after an attempted purchase. No activity is preloaded.</p></div>
+        <p class="ledger-note">Local hash-linked records help identify accidental edits. They are not externally anchored or immutable; verify a transaction independently before treating it as settled.</p>
+      </section>
+
+      <section class="limits" aria-labelledby="limits-title">
+        <span class="eyebrow">BOUNDARIES</span>
+        <h2 id="limits-title">What this check tells you</h2>
+        <div class="limit-grid">
+          <p><b>It confirms</b><br>an active Registry entry, a matching Agent Card hash, and the registered payment wallet—when the live checks return those facts.</p>
+          <p><b>It does not confirm</b><br>service quality, safe behavior, seller honesty, legal compliance, or future control of an external smart wallet.</p>
+          <p><b>Sponsored means</b><br>the facilitator pays the Concordium network fee. The agent still pays the quoted service amount.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>COUNTERCHECK / TESTNET PROTOTYPE</span><a href="/">Back to top ↑</a></footer>
+    <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+  </body>
+</html>
