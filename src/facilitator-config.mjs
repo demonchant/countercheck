@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 
 const TESTNET = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
 const MAX_PAYMENT_MICROCCD = 1_000_000n;
 const allowedEnv = new Set([
   "HOST", "PORT", "CONCORDIUM_NETWORK", "CCD_ACCOUNT_ADDRESS", "SELLER_PAY_TO",
   "FACILITATOR_HOST", "FACILITATOR_PORT", "FACILITATOR_SETTLEMENT_ENABLED",
+  "FACILITATOR_PRIVATE_SERVICE",
   "FACILITATOR_API_TOKEN", "FACILITATOR_MAX_AMOUNT_MICROCCD",
   "FACILITATOR_MIN_SPONSOR_BALANCE_MICROCCD", "FACILITATOR_STORE_PATH",
   "CCD_FACILITATOR_ADDRESS", "CCD_FACILITATOR_PRIVATE_KEY",
@@ -41,10 +43,47 @@ function bool(name, fallback = false) {
   throw new Error(`${name} must be true or false`);
 }
 
-const host = process.env.FACILITATOR_HOST || process.env.HOST || "127.0.0.1";
-if (!new Set(["127.0.0.1", "localhost", "::1"]).has(host)) {
-  throw new Error("FACILITATOR_HOST must be loopback; remote access requires a separate security design");
+const loopbackHosts = new Set(["127.0.0.1", "localhost", "::1"]);
+
+export function resolveFacilitatorListenConfig({
+  render = false,
+  privateService = false,
+  externalUrl = "",
+  configuredHost,
+  storePath = "./data/facilitator-settlements",
+}) {
+  const host = configuredHost || "127.0.0.1";
+  if (render) {
+    if (!privateService || externalUrl) {
+      throw new Error("Render facilitator must run as a private service without a public external URL.");
+    }
+    if (host !== "0.0.0.0") {
+      throw new Error("A private Render facilitator must bind to 0.0.0.0 for private-network traffic.");
+    }
+    const persistentRoot = resolve("/var/data");
+    const resolvedStore = resolve(storePath);
+    const relativeStore = relative(persistentRoot, resolvedStore);
+    if (!relativeStore || relativeStore === "." || relativeStore.startsWith("..") || isAbsolute(relativeStore)) {
+      throw new Error("Render facilitator storage must use the attached persistent disk at /var/data.");
+    }
+    return { host, privateDeployment: true };
+  }
+
+  if (privateService || !loopbackHosts.has(host)) {
+    throw new Error("Outside Render, the facilitator must bind to loopback; private deployment mode is unavailable.");
+  }
+  return { host: host === "localhost" ? "127.0.0.1" : host, privateDeployment: false };
 }
+
+const privateService = bool("FACILITATOR_PRIVATE_SERVICE");
+const storePath = process.env.FACILITATOR_STORE_PATH || "./data/facilitator-settlements";
+const { host, privateDeployment } = resolveFacilitatorListenConfig({
+  render: process.env.RENDER === "true",
+  privateService,
+  externalUrl: process.env.RENDER_EXTERNAL_URL || "",
+  configuredHost: process.env.FACILITATOR_HOST || process.env.HOST,
+  storePath,
+});
 const port = Number(process.env.FACILITATOR_PORT || "4180");
 if (!Number.isInteger(port) || port < 1024 || port > 65535) {
   throw new Error("FACILITATOR_PORT must be an integer from 1024 through 65535");
@@ -55,8 +94,9 @@ const maxAmountMicroCcd = positiveInteger("FACILITATOR_MAX_AMOUNT_MICROCCD", "10
 if (BigInt(maxAmountMicroCcd) > MAX_PAYMENT_MICROCCD) throw new Error("FACILITATOR_MAX_AMOUNT_MICROCCD cannot exceed the hard 1 CCD facilitator limit");
 
 export const facilitatorConfig = Object.freeze({
-  host: host === "localhost" ? "127.0.0.1" : host,
+  host,
   port,
+  privateDeployment,
   network,
   buyerAddress: process.env.CCD_ACCOUNT_ADDRESS || "",
   sellerPayTo: process.env.SELLER_PAY_TO || "",
@@ -66,7 +106,7 @@ export const facilitatorConfig = Object.freeze({
   settlementEnabled: bool("FACILITATOR_SETTLEMENT_ENABLED"),
   maxAmountMicroCcd,
   minSponsorBalanceMicroCcd: positiveInteger("FACILITATOR_MIN_SPONSOR_BALANCE_MICROCCD", "10000"),
-  storePath: process.env.FACILITATOR_STORE_PATH || "./data/facilitator-settlements",
+  storePath,
   grpcHost: "grpc.testnet.concordium.com",
   grpcPort: 20000,
 });

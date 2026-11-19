@@ -1,0 +1,56 @@
+﻿{
+    "capturedAt":  "2026-11-19T01:53:44.850Z",
+    "provenance":  "OBSERVED",
+    "environment":  "local loopback app + Concordium Testnet Registry + local x402 challenge-only seller",
+    "revision":  "uncommitted workspace; git has no commit",
+    "requests":  [
+                     "POST http://127.0.0.1:4173/api/verify (read-only Registry/card/wallet check)",
+                     "POST http://127.0.0.1:4173/api/quote (read-only buyer/seller Registry rechecks + seller HTTP 402 challenge validation)",
+                     "GET http://127.0.0.1:4191/healthz"
+                 ],
+    "sellerCheck":  {
+                        "status":  "verified",
+                        "active":  true,
+                        "cardMatches":  true,
+                        "checkedAt":  "2026-11-19T01:53:42.989Z"
+                    },
+    "partyChecks":  {
+                        "buyerStatus":  "verified",
+                        "buyerWalletMatches":  true,
+                        "sellerStatus":  "verified",
+                        "sellerWalletMatches":  true
+                    },
+    "quote":  {
+                  "status":  "quoted",
+                  "checkedAt":  "2026-11-19T01:53:44.850Z",
+                  "payment":  {
+                                  "scheme":  "exact",
+                                  "network":  "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+                                  "asset":  "CCD",
+                                  "amountMicroCcd":  "1000000",
+                                  "payTo":  "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+                                  "maxTimeoutSeconds":  60,
+                                  "feePayer":  "4izZERn99ZDyiJ1PjBisVvaHMRNXZ2iZeKfwzd3Qxk6jfQMgY1"
+                              },
+                  "spendCapMicroCcd":  "1000000",
+                  "paymentEnabled":  false
+              },
+    "sellerHealth":  {
+                         "ok":  true,
+                         "network":  "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+                         "amountMicroCcd":  "1000000",
+                         "settlementEnabled":  false,
+                         "paidFulfillmentAvailable":  false
+                     },
+    "actions":  {
+                    "signing":  false,
+                    "submission":  false,
+                    "settlement":  false,
+                    "paidFulfillment":  false
+                },
+    "limitations":  [
+                        "A fresh read-only testnet Registry/card/wallet check and 1 CCD x402 challenge passed.",
+                        "No unsigned transaction review was prepared in this capture; transaction review depends on Testnet node RPC access.",
+                        "No buyer signature, payment, settlement, paid response, or payment transaction hash exists."
+                    ]
+}

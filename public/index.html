@@ -3,88 +3,82 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f0efe9">
-    <meta name="description" content="Check an agent's accountability before buying a paid service.">
-    <title>Countercheck — verify before you pay</title>
+    <meta name="theme-color" content="#101916">
+    <meta name="description" content="Countercheck verifies an agent seller and its payment terms before a bounded, human-approved Testnet purchase.">
+    <title>Countercheck — know who gets paid</title>
     <link rel="stylesheet" href="/assets/app.css">
     <script type="module" src="/assets/app.js"></script>
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/" aria-label="Countercheck home"><span class="brand-mark" aria-hidden="true">cc</span> countercheck</a>
-      <div class="network"><span class="network-dot" aria-hidden="true"></span><span>Concordium testnet</span><span id="payment-mode" class="mode-tag">PAYMENTS OFF</span></div>
+      <a class="brand" href="/" aria-label="Countercheck home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>countercheck<span class="brand-period">.</span></span>
+      </a>
+      <div class="topbar-meta"><span class="network-label"><i class="live-dot" aria-hidden="true"></i>Concordium / Testnet</span><span id="payment-mode" class="mode-tag">PAYMENTS OFF</span></div>
     </header>
 
     <main>
-      <section class="intro">
-        <div class="eyebrow"><span>AGENT COMMERCE / BUYER CONTROL</span><span>01 — 04</span></div>
-        <div class="intro-grid">
-          <div>
-            <h1>Know who<br>stands <em>behind it.</em></h1>
-            <p class="lede">Check an agent's verified owner and payment wallet before your agent buys a service. Keep a receipt that ties the check to the result.</p>
-          </div>
-          <aside class="principle">
-            <span class="principle-index">THE RULE</span>
-            <strong>A badge is a link to accountability.<br>It is not an endorsement.</strong>
-            <a href="https://www.concordium.com/article/the-verified-by-concordium-badge-the-trust-mark-that-travels-with-your-agent" target="_blank" rel="noreferrer">How the badge works ↗</a>
-          </aside>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-mark">CC / 01</span> A buyer's control room for agent commerce</p>
+          <h1 id="hero-title">Before an agent pays,<br><em>check the other side.</em></h1>
+          <div class="hero-bottom"><p>Payments prove that value moved. Countercheck asks a prior question: is this the seller you meant to pay, and does the request fit your rules?</p><a class="scroll-cue" href="#workflow"><span>START A CHECK</span><b aria-hidden="true">↓</b></a></div>
         </div>
+        <aside class="signal-card" aria-label="Countercheck decision model">
+          <div class="signal-top"><span>DECISION MODEL</span><span>01—04</span></div>
+          <div class="scope-art" aria-hidden="true"><span class="scope-ring ring-outer"></span><span class="scope-ring ring-middle"></span><span class="scope-ring ring-inner"></span><span class="scope-cross cross-x"></span><span class="scope-cross cross-y"></span><span class="scope-center">CC</span><span class="scope-target"></span><span class="scope-coordinate">53° 20′ N<br>06° 15′ W</span><span class="scope-readout">SIGNAL / VERIFIED</span></div>
+          <div class="signal-equation"><span>IDENTITY</span><b>+</b><span>PAYMENT TERMS</span><b>+</b><span>HUMAN APPROVAL</span></div>
+          <p>One narrow check before value leaves the buyer.</p>
+        </aside>
       </section>
 
-      <section class="workspace" aria-labelledby="flow-title">
-        <div class="section-head">
-          <div><span class="eyebrow">BUYER AGENT / LIVE CHECK</span><h2 id="flow-title">Counterparty check</h2></div>
-          <p id="registry-state" class="state-chip state-idle"><span class="state-dot"></span><span>Ready for a badge</span></p>
+      <section id="workflow" class="workflow-section" aria-labelledby="workflow-title">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="eyebrow-mark">LIVE / 01</span> Buyer agent · guarded purchase</p><h2 id="workflow-title">Check the counterparty.</h2></div>
+          <p id="registry-state" class="state-chip state-idle"><span class="state-dot"></span><span>Awaiting seller badge</span></p>
         </div>
 
-        <div class="flow-grid">
+        <div class="flow-shell">
           <div class="form-panel">
-            <label for="badge">Seller's Concordium badge</label>
-            <div class="input-row">
-              <input id="badge" name="badge" autocomplete="off" spellcheck="false" maxlength="120" placeholder="Paste the CIS-8004 badge address" aria-describedby="badge-help">
-              <button id="verify" class="button button-dark" type="button">Check badge <span aria-hidden="true">↗</span></button>
-            </div>
-            <p id="badge-help" class="help">A read-only lookup checks the active Registry entry and the Agent Card hash on Concordium testnet.</p>
+            <div class="form-kicker"><span class="form-index">A</span><span>Seller identity</span><span class="form-kicker-line"></span><span class="mono">READ-ONLY LOOKUP</span></div>
+            <label for="badge">Concordium agent badge</label>
+            <div class="input-row"><input id="badge" name="badge" autocomplete="off" spellcheck="false" maxlength="120" placeholder="Paste the seller's CIS-8004 badge" aria-describedby="badge-help"><button id="verify" class="button button-dark" type="button">Check seller <span aria-hidden="true">↗</span></button></div>
+            <div class="quick-actions"><button id="try-failure" class="text-action" type="button">Show a blocked check <span aria-hidden="true">↗</span></button><button id="load-demo-seller" class="text-action" type="button">Load demo seller <span aria-hidden="true">↗</span></button></div>
+            <p id="badge-help" class="help">Reads the live Registry entry and checks that the current Agent Card matches its registered hash and wallet.</p>
             <div id="verification-result" class="verification-result" aria-live="polite" hidden></div>
 
-            <div class="divider"></div>
-            <div class="purchase-head"><div><span class="eyebrow">PAID REQUEST</span><h3>Review before purchase</h3></div><span class="locked-tag"><span aria-hidden="true">⌑</span> User approval</span></div>
-            <p class="help">A quote is available only after the configured seller passes verification. The server uses a local testnet agent key; the key never enters this page.</p>
-            <button id="quote" class="button button-outline" type="button" disabled>Get payment quote</button>
+            <div class="section-rule"><span>B</span><i></i><small>QUOTE → REVIEW → APPROVE → SETTLE</small></div>
+            <div class="purchase-head"><div><p class="eyebrow">PAYMENT GATE</p><h3>Every detail, before the transfer.</h3></div><span class="approval-tag"><span aria-hidden="true">⌑</span> Human in control</span></div>
+            <p class="purchase-copy">Countercheck reads the seller's live x402 request, matches it to the verified wallet, then shows the exact sponsored transaction. The buyer signs only after a separate approval.</p>
+            <button id="quote" class="button button-lime" type="button" disabled>Check the live request <span aria-hidden="true">↗</span></button>
             <div id="quote-panel" class="quote-panel" aria-live="polite" hidden></div>
           </div>
 
-          <aside class="steps-panel" aria-label="Purchase sequence">
-            <div class="step-row is-current" data-step="verify"><span class="step-number">01</span><div><strong>Verify seller</strong><small>Active badge + card hash</small></div><span class="step-mark" aria-hidden="true">—</span></div>
-            <div class="step-row" data-step="policy"><span class="step-number">02</span><div><strong>Check policy</strong><small>Recipient + exact spend cap</small></div><span class="step-mark" aria-hidden="true">—</span></div>
-            <div class="step-row" data-step="pay"><span class="step-number">03</span><div><strong>Approve &amp; pay</strong><small>Sponsored testnet transaction</small></div><span class="step-mark" aria-hidden="true">—</span></div>
-            <div class="step-row" data-step="receipt"><span class="step-number">04</span><div><strong>Read the receipt</strong><small>Response digest + explorer link</small></div><span class="step-mark" aria-hidden="true">—</span></div>
-            <div class="privacy-note"><span aria-hidden="true">◌</span><p>The badge reveals neither the owner's name nor their identity documents. The check confirms a registration and card integrity, not how the agent behaves.</p></div>
+          <aside class="journey-panel" aria-label="Purchase workflow">
+            <div class="journey-head"><span>CONTROL SEQUENCE</span><span class="mono">LOCAL / TESTNET</span></div>
+            <div class="step-list">
+              <div class="step-row is-current" data-step="verify"><span class="step-number">01</span><span class="step-rail"></span><div><strong>Verify the seller</strong><small>Badge · card hash · wallet</small></div><span class="step-mark" aria-hidden="true">○</span></div>
+              <div class="step-row" data-step="policy"><span class="step-number">02</span><span class="step-rail"></span><div><strong>Interrogate the request</strong><small>Payee · asset · cap · expiry</small></div><span class="step-mark" aria-hidden="true">○</span></div>
+              <div class="step-row" data-step="pay"><span class="step-number">03</span><span class="step-rail"></span><div><strong>Review and authorize</strong><small>Exact digest · fresh chain state</small></div><span class="step-mark" aria-hidden="true">○</span></div>
+              <div class="step-row" data-step="receipt"><span class="step-number">04</span><span class="step-rail"></span><div><strong>Receive proof of service</strong><small>Finalized transfer · paid response</small></div><span class="step-mark" aria-hidden="true">○</span></div>
+            </div>
+            <div class="guardrail"><span class="guardrail-icon" aria-hidden="true">↗</span><div><b>Trust has a boundary.</b><p>A badge links an agent to an accountable identity. It does not certify honesty, quality, or future behavior.</p></div></div>
+            <div class="limit-stamp"><span>SPEND LIMIT</span><strong>1.00 <small>CCD</small></strong><span>HARD-CODED TESTNET CEILING</span></div>
           </aside>
         </div>
       </section>
 
-      <section class="ledger" aria-labelledby="ledger-title">
-        <div class="section-head">
-          <div><span class="eyebrow">LOCAL RECORDS / HASH-LINKED</span><h2 id="ledger-title">Recent receipts</h2></div>
-          <span id="receipt-count" class="record-count">No records loaded</span>
-        </div>
-        <div id="receipts" class="receipt-list" aria-live="polite"><p class="empty-state">A receipt appears here only after an attempted purchase. No activity is preloaded.</p></div>
-        <p class="ledger-note">Local hash-linked records help identify accidental edits. They are not externally anchored or immutable; verify a transaction independently before treating it as settled.</p>
+      <section class="receipt-section" aria-labelledby="ledger-title">
+        <div class="section-heading receipt-heading"><div><p class="eyebrow"><span class="eyebrow-mark">LOCAL / 02</span> Append-only session evidence</p><h2 id="ledger-title">The trail after the decision.</h2></div><span id="receipt-count" class="record-count">Loading records…</span></div>
+        <div id="receipts" class="receipt-list" aria-live="polite"><p class="empty-state">No finalized paid receipts have been recorded in this local session.</p></div>
+        <p class="ledger-note"><span class="ledger-asterisk">*</span> Local records are hash-linked for tamper evidence. They are not externally anchored or immutable. Verify each transaction independently on the Concordium explorer.</p>
       </section>
 
-      <section class="limits" aria-labelledby="limits-title">
-        <span class="eyebrow">BOUNDARIES</span>
-        <h2 id="limits-title">What this check tells you</h2>
-        <div class="limit-grid">
-          <p><b>It confirms</b><br>an active Registry entry, a matching Agent Card hash, and the registered payment wallet—when the live checks return those facts.</p>
-          <p><b>It does not confirm</b><br>service quality, safe behavior, seller honesty, legal compliance, or future control of an external smart wallet.</p>
-          <p><b>Sponsored means</b><br>the facilitator pays the Concordium network fee. The agent still pays the quoted service amount.</p>
-        </div>
-      </section>
+      <section class="principles" aria-label="Product guarantees and limits"><div><span class="principle-number">01</span><h3>Identity is a pointer.</h3><p>We verify registration, card integrity, and the wallet the seller declared.</p></div><div><span class="principle-number">02</span><h3>Policy is deterministic.</h3><p>Network, asset, payee, expiry, and the one CCD ceiling are checked in code.</p></div><div><span class="principle-number">03</span><h3>Approval is specific.</h3><p>The buyer key signs only the transaction whose digest was reviewed.</p></div></section>
     </main>
 
-    <footer><span>COUNTERCHECK / TESTNET PROTOTYPE</span><a href="/">Back to top ↑</a></footer>
+    <footer><a class="footer-brand" href="/">countercheck<span>.</span></a><span>BUILT FOR AGENT COMMERCE / CONCORDIUM TESTNET</span><a href="#workflow">RUN THE CHECK ↑</a></footer>
     <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
   </body>
 </html>

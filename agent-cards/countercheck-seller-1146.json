@@ -62,7 +62,7 @@
   },
   "supportedInterfaces": [
     {
-      "url": "https://countercheck-zid6.onrender.com/a2a/seller/v1",
+      "url": "https://countercheck-seller-1146.onrender.com/a2a/seller/v1",
       "protocolBinding": "JSONRPC",
       "protocolVersion": "1.0"
     }
@@ -72,12 +72,12 @@
   "services": [
     {
       "name": "A2A",
-      "endpoint": "https://countercheck-zid6.onrender.com/a2a/seller/v1",
+      "endpoint": "https://countercheck-seller-1146.onrender.com/a2a/seller/v1",
       "version": "1.0"
     },
     {
       "name": "x402",
-      "endpoint": "https://countercheck-zid6.onrender.com/resource",
+      "endpoint": "https://countercheck-seller-1146.onrender.com/resource",
       "version": "2"
     }
   ],

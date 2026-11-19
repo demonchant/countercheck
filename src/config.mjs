@@ -1,12 +1,20 @@
 import { readFileSync } from "node:fs";
-import { renderResourceUrl } from "./seller-resource-config.mjs";
+import { renderResourceUrl, resolveBuyerSellerResourceUrl } from "./seller-resource-config.mjs";
+import { resolveBuyerApiRuntime } from "./api-auth.mjs";
 
 function loadLocalEnv() {
+  const allowed = new Set([
+    "HOST", "PORT", "RENDER", "BUYER_API_TOKEN", "BUYER_API_SERVICE",
+    "REGISTRY_MCP_URL", "CONCORDIUM_NETWORK", "SELLER_ASSET", "SELLER_BADGE",
+    "BUYER_BADGE", "SELLER_PAY_TO", "SELLER_RESOURCE_URL", "SELLER_RESOURCE_PUBLIC_URL",
+    "MAX_SPEND_MICROCCD", "PAYMENTS_ENABLED", "CCD_ACCOUNT_ADDRESS",
+    "CCD_FACILITATOR_ADDRESS", "CCD_PRIVATE_KEY", "AUDIT_LOG_PATH",
+  ]);
   try {
     const contents = readFileSync(new URL("../.env", import.meta.url), "utf8");
     for (const line of contents.split(/\r?\n/u)) {
       const match = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/u);
-      if (!match || match[1] in process.env) continue;
+      if (!match || !allowed.has(match[1]) || match[1] in process.env) continue;
       process.env[match[1]] = match[2].replace(/^(['"])(.*)\1$/u, "$2");
     }
   } catch (error) {
@@ -32,10 +40,15 @@ const readPositiveInteger = (name) => {
 
 export const MAX_PAYMENT_MICROCCD = 1_000_000n;
 
-const hostname = process.env.HOST || "127.0.0.1";
-if (!new Set(["127.0.0.1", "localhost", "::1"]).has(hostname)) {
-  throw new Error("HOST must be loopback. Add authenticated access before exposing this service.");
+const renderRuntime = process.env.RENDER === "true";
+const apiToken = process.env.BUYER_API_TOKEN || "";
+const buyerApiService = process.env.BUYER_API_SERVICE === "true";
+if (process.env.BUYER_API_SERVICE !== undefined && !["true", "false"].includes(process.env.BUYER_API_SERVICE)) {
+  throw new Error("BUYER_API_SERVICE must be true or false");
 }
+const apiRuntime = buyerApiService
+  ? resolveBuyerApiRuntime({ render: renderRuntime, host: process.env.HOST, apiToken })
+  : resolveBuyerApiRuntime({ render: false, host: process.env.HOST && new Set(["127.0.0.1", "localhost", "::1"]).has(process.env.HOST) ? process.env.HOST : "127.0.0.1" });
 
 const registryRoot = process.env.REGISTRY_MCP_URL || "https://agent-registry-mcp.concordium.com";
 const registryUrl = new URL(registryRoot);
@@ -57,17 +70,16 @@ if (maxSpendMicroCcd && BigInt(maxSpendMicroCcd) > MAX_PAYMENT_MICROCCD) {
 const port = Number(process.env.PORT || 4173);
 if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("PORT must be an integer from 1024 through 65535");
 
-const renderResource = process.env.RENDER === "true" ? renderResourceUrl(process.env.RENDER_EXTERNAL_URL || "") : "";
-const resource = process.env.SELLER_RESOURCE_URL || renderResource;
-if (resource) {
-  const resourceUrl = new URL(resource);
-  if (resourceUrl.protocol !== "https:" && !(resourceUrl.protocol === "http:" && ["localhost", "127.0.0.1"].includes(resourceUrl.hostname))) {
-    throw new Error("SELLER_RESOURCE_URL must use HTTPS (HTTP is allowed only for local development)");
-  }
-}
+const resource = resolveBuyerSellerResourceUrl({
+  configuredUrl: process.env.SELLER_RESOURCE_URL || "",
+  renderExternalUrl: process.env.RENDER_EXTERNAL_URL || "",
+  render: renderRuntime,
+});
 
 export const config = Object.freeze({
-  host: hostname === "localhost" ? "127.0.0.1" : hostname,
+  host: apiRuntime.host,
+  remoteDeployment: apiRuntime.remote,
+  apiToken,
   port,
   registryBase: registryUrl.origin,
   network,
@@ -78,6 +90,7 @@ export const config = Object.freeze({
   sellerResourceUrl: resource,
   maxSpendMicroCcd,
   paymentsEnabled: readBool("PAYMENTS_ENABLED"),
+  settlementEnabled: readBool("FACILITATOR_SETTLEMENT_ENABLED"),
   accountAddress: process.env.CCD_ACCOUNT_ADDRESS || "",
   sponsorAddress: process.env.CCD_FACILITATOR_ADDRESS || "",
   privateKey: process.env.CCD_PRIVATE_KEY || "",

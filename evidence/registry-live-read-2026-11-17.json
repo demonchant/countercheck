@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-11-17T14:09:41Z/14:09:42Z",
+  "method": "Local Countercheck agent /verify using the configured read-only Concordium Registry MCP tool verify_counterparties",
+  "network": "Concordium Testnet (ccd:4221332d34e1694168c2a0c0b3fd0f27)",
+  "result": "verified",
+  "buyer": {
+    "badge": "JyP9WD3R9D4tgxwjcy8jc",
+    "status": "verified",
+    "active": true,
+    "cardMatches": true,
+    "registeredWallet": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+    "recipientMatches": true,
+    "evidenceUrl": "https://agent-registry-mcp.concordium.com/v1/check-badge/JyP9WD3R9D4tgxwjcy8jc?network=testnet"
+  },
+  "seller": {
+    "badge": "JyP9WBwwDBZxrqhuqHWPt",
+    "status": "verified",
+    "active": true,
+    "cardMatches": true,
+    "registeredWallet": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+    "recipientMatches": true,
+    "evidenceUrl": "https://agent-registry-mcp.concordium.com/v1/check-badge/JyP9WBwwDBZxrqhuqHWPt?network=testnet"
+  },
+  "limitations": [
+    "This read verifies current Registry/card/wallet checks; it does not reconcile the README-reported setAgentURI transaction hashes with finalized transaction receipts.",
+    "A badge and matching card do not establish safe behavior, service quality, legal compliance, or payment settlement.",
+    "The same session's quote tool returned unavailable because no seller quote could be read. The browser transaction-preparation request also failed because its chain node connection was unavailable. No payment was made."
+  ]
+}

@@ -4,19 +4,16 @@ import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { x402HTTPResourceServer } from "@x402/core/http";
 import { ExactConcordiumScheme } from "@x402/concordium/exact/server";
 import { AccountAddress } from "@concordium/web-sdk";
-import { resolveSellerResourceUrl, sellerListenConfig } from "./seller-resource-config.mjs";
+import { resolveFacilitatorUrl, resolveSellerResourceUrl, sellerListenConfig } from "./seller-resource-config.mjs";
 import { createChallengeOnlyFacilitator, hasPaymentAuthorization } from "./seller-challenge-only.mjs";
 import { createA2AJsonRpcHandler } from "./a2a-agent.mjs";
-import { inspectBadge } from "./registry.mjs";
-import { createQuote, parseChallenge } from "./payment.mjs";
-import { config as buyerConfig } from "./config.mjs";
 
 const TESTNET = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
 const MAX_PAYMENT_MICROCCD = "1000000";
 const allowedEnv = new Set([
   "SELLER_RESOURCE_ENABLED", "SELLER_RESOURCE_HOST", "SELLER_RESOURCE_PORT",
   "SELLER_RESOURCE_PUBLIC_URL", "SELLER_CHALLENGE_ONLY",
-  "SELLER_PAY_TO", "CCD_FACILITATOR_ADDRESS", "FACILITATOR_API_TOKEN", "FACILITATOR_SETTLEMENT_ENABLED", "CONCORDIUM_NETWORK",
+  "SELLER_PAY_TO", "CCD_FACILITATOR_ADDRESS", "FACILITATOR_API_TOKEN", "FACILITATOR_URL", "FACILITATOR_SETTLEMENT_ENABLED", "CONCORDIUM_NETWORK",
 ]);
 
 function loadSellerEnv() {
@@ -32,7 +29,14 @@ function loadSellerEnv() {
   }
 }
 
+process.env.CCD_PRIVATE_KEY = "";
+process.env.CCD_FACILITATOR_PRIVATE_KEY = "";
 loadSellerEnv();
+const [{ inspectBadge }, { createQuote, parseChallenge }, { config: buyerConfig }] = await Promise.all([
+  import("./registry.mjs"),
+  import("./payment.mjs"),
+  import("./config.mjs"),
+]);
 
 const enabled = process.env.SELLER_RESOURCE_ENABLED === "true";
 if (process.env.SELLER_RESOURCE_ENABLED !== undefined && !["true", "false"].includes(process.env.SELLER_RESOURCE_ENABLED)) {
@@ -63,6 +67,7 @@ const token = process.env.FACILITATOR_API_TOKEN || "";
 if (!payTo || !sponsor || (!challengeOnly && token.length < 32)) {
   throw new Error("Seller resource requires SELLER_PAY_TO and CCD_FACILITATOR_ADDRESS, plus FACILITATOR_API_TOKEN outside challenge-only mode.");
 }
+const facilitatorUrl = challengeOnly ? "" : resolveFacilitatorUrl(process.env.FACILITATOR_URL || "", { render: renderRuntime });
 try { AccountAddress.fromBase58(payTo); AccountAddress.fromBase58(sponsor); }
 catch { throw new Error("Seller payee and sponsor must be valid Concordium account addresses"); }
 
@@ -70,7 +75,7 @@ const auth = { authorization: `Bearer ${token}` };
 const facilitator = challengeOnly
   ? createChallengeOnlyFacilitator({ network: TESTNET, sponsorAddress: sponsor })
   : new HTTPFacilitatorClient({
-    url: "http://127.0.0.1:4180",
+    url: facilitatorUrl,
     timeoutMs: 90_000,
     createAuthHeaders: async () => ({ verify: auth, settle: auth, supported: auth }),
   });

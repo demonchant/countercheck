@@ -6,25 +6,30 @@ $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Pa
 $statePath = Join-Path $env:TEMP 'countercheck-safe-demo-state.json'
 $runId = [guid]::NewGuid().ToString('N')
 $appScript = Join-Path $projectRoot 'src\server.mjs'
-$facilitatorScript = Join-Path $projectRoot 'src\facilitator.mjs'
+$sellerScript = Join-Path $projectRoot 'src\seller-resource.mjs'
 $nodePath = (Get-Command node -ErrorAction Stop).Source
 $network = 'ccd:4221332d34e1694168c2a0c0b3fd0f27'
 $appLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-app.log"
 $appErrorLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-app-error.log"
-$facilitatorLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-facilitator.log"
-$facilitatorErrorLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-facilitator-error.log"
+$sellerLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-seller.log"
+$sellerErrorLog = Join-Path $env:TEMP "countercheck-safe-demo-$runId-seller-error.log"
 $started = @()
 $overrides = [ordered]@{
     HOST = '127.0.0.1'
     PORT = '4173'
     PAYMENTS_ENABLED = 'false'
     CONCORDIUM_NETWORK = $network
+    SELLER_RESOURCE_URL = 'http://127.0.0.1:4191/resource'
+    CCD_PRIVATE_KEY = ''
+    CCD_FACILITATOR_PRIVATE_KEY = ''
+    FACILITATOR_API_TOKEN = ''
+    BUYER_API_TOKEN = ''
     AUDIT_LOG_PATH = (Join-Path $env:TEMP "countercheck-safe-demo-$runId-receipts.jsonl")
-    FACILITATOR_HOST = '127.0.0.1'
-    FACILITATOR_PORT = '4180'
+    SELLER_RESOURCE_ENABLED = 'true'
+    SELLER_RESOURCE_HOST = '127.0.0.1'
+    SELLER_RESOURCE_PORT = '4191'
+    SELLER_CHALLENGE_ONLY = 'true'
     FACILITATOR_SETTLEMENT_ENABLED = 'false'
-    FACILITATOR_MAX_AMOUNT_MICROCCD = '1000000'
-    FACILITATOR_STORE_PATH = (Join-Path $env:TEMP "countercheck-safe-demo-$runId-store")
 }
 $saved = @{}
 
@@ -40,6 +45,10 @@ function Get-LocalJson([string]$Url) {
     $request.Method = 'GET'
     $request.Timeout = 1500
     $request.ReadWriteTimeout = 1500
+    if ($Url -eq 'http://127.0.0.1:4173/api/status') {
+        $request.Headers['Origin'] = 'http://127.0.0.1:4173'
+        $request.Headers['x-countercheck-request'] = '1'
+    }
     $response = $request.GetResponse()
     try {
         $reader = [System.IO.StreamReader]::new($response.GetResponseStream())
@@ -59,17 +68,20 @@ function Wait-ForJson([System.Diagnostics.Process]$Process, [string]$Url) {
 
 if (Test-Path -LiteralPath $statePath) {
     $oldState = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
-    if ($oldState -and ((Get-Process -Id $oldState.appPid -ErrorAction SilentlyContinue) -or (Get-Process -Id $oldState.facilitatorPid -ErrorAction SilentlyContinue))) {
+    $oldAppPid = if ($oldState.PSObject.Properties['appPid']) { $oldState.appPid } else { 0 }
+    $oldSellerPid = if ($oldState.PSObject.Properties['sellerPid']) { $oldState.sellerPid } else { 0 }
+    $oldFacilitatorPid = if ($oldState.PSObject.Properties['facilitatorPid']) { $oldState.facilitatorPid } else { 0 }
+    if ($oldState -and ((Get-Process -Id $oldAppPid -ErrorAction SilentlyContinue) -or (Get-Process -Id $oldSellerPid -ErrorAction SilentlyContinue) -or (Get-Process -Id $oldFacilitatorPid -ErrorAction SilentlyContinue))) {
         throw 'Countercheck demo processes are already recorded. Run .\demo\stop-safe-demo.ps1 first.'
     }
     Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
 }
 
-foreach ($port in @(4173, 4180)) {
+foreach ($port in @(4173, 4191)) {
     if (Test-PortOccupied $port) { throw "Local port $port is already in use. Stop the existing service before starting this demo." }
 }
 
-if (!(Test-Path -LiteralPath $appScript) -or !(Test-Path -LiteralPath $facilitatorScript)) { throw 'Countercheck server files were not found.' }
+if (!(Test-Path -LiteralPath $appScript) -or !(Test-Path -LiteralPath $sellerScript)) { throw 'Countercheck server files were not found.' }
 
 try {
     foreach ($entry in $overrides.GetEnumerator()) {
@@ -82,21 +94,32 @@ try {
     $appStatus = Wait-ForJson $appProcess 'http://127.0.0.1:4173/api/status'
     if ($appStatus.paymentEnabled -ne $false -or $appStatus.network -ne $network) { throw 'The app did not report safe Testnet/payment-off status.' }
 
-    $facilitatorProcess = Start-Process -FilePath $nodePath -ArgumentList ('"' + $facilitatorScript + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $facilitatorLog -RedirectStandardError $facilitatorErrorLog
-    $started += [pscustomobject]@{ Id = $facilitatorProcess.Id; Script = $facilitatorScript }
-    $health = Wait-ForJson $facilitatorProcess 'http://127.0.0.1:4180/healthz'
-    $supported = Get-LocalJson 'http://127.0.0.1:4180/supported'
-    $kind = @($supported.kinds | Where-Object { $_.x402Version -eq 2 -and $_.scheme -eq 'exact' -and $_.network -eq $network }) | Select-Object -First 1
-    if ($health.ok -ne $true -or $health.settlementEnabled -ne $false -or $health.network -ne $network) { throw 'Facilitator health did not confirm Testnet with settlement disabled.' }
-    if (!$kind) { throw 'Facilitator does not report x402 v2 exact support for Concordium Testnet.' }
+    $sellerProcess = Start-Process -FilePath $nodePath -ArgumentList ('"' + $sellerScript + '"') -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $sellerLog -RedirectStandardError $sellerErrorLog
+    $started += [pscustomobject]@{ Id = $sellerProcess.Id; Script = $sellerScript }
+    $sellerHealth = Wait-ForJson $sellerProcess 'http://127.0.0.1:4191/healthz'
+    if ($sellerHealth.ok -ne $true -or $sellerHealth.settlementEnabled -ne $false -or $sellerHealth.paidFulfillmentAvailable -ne $false -or $sellerHealth.network -ne $network) {
+        throw 'Seller health did not confirm Testnet challenge-only mode.'
+    }
+    $challengeRequest = [System.Net.HttpWebRequest]::Create('http://127.0.0.1:4191/resource')
+    $challengeRequest.Method = 'GET'
+    $challengeRequest.Accept = 'application/json'
+    $challengeRequest.Timeout = 3000
+    try { $challengeResponse = $challengeRequest.GetResponse() }
+    catch [System.Net.WebException] { $challengeResponse = $_.Exception.Response }
+    if (!$challengeResponse) { throw 'The local seller did not return an HTTP response.' }
+    try {
+        $challengeHeader = $challengeResponse.Headers['PAYMENT-REQUIRED']
+        if (!$challengeHeader) { $challengeHeader = $challengeResponse.Headers['X-PAYMENT-REQUIRED'] }
+        if ([int]$challengeResponse.StatusCode -ne 402 -or !$challengeHeader) { throw 'The local seller did not return an x402 HTTP 402 challenge.' }
+    } finally { $challengeResponse.Dispose() }
 
-    [pscustomobject]@{ appPid = $appProcess.Id; facilitatorPid = $facilitatorProcess.Id; appScript = $appScript; facilitatorScript = $facilitatorScript; appLog = $appLog; appErrorLog = $appErrorLog; facilitatorLog = $facilitatorLog; facilitatorErrorLog = $facilitatorErrorLog } | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding UTF8
+    [pscustomobject]@{ appPid = $appProcess.Id; sellerPid = $sellerProcess.Id; appScript = $appScript; sellerScript = $sellerScript; appLog = $appLog; appErrorLog = $appErrorLog; sellerLog = $sellerLog; sellerErrorLog = $sellerErrorLog } | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding UTF8
     Write-Output 'Countercheck safe demo is ready.'
     Write-Output "App: http://127.0.0.1:4173 | network=$network | paymentEnabled=false"
-    Write-Output "Facilitator: http://127.0.0.1:4180 | health=ok | settlementEnabled=false"
-    Write-Output "Supported scheme: x402 v$($kind.x402Version) $($kind.scheme) on Concordium Testnet"
-    Write-Output 'Only GET status/health/supported calls were made. No payment payload was verified or settled.'
-    Write-Output 'Stop with .\demo\stop-safe-demo.ps1. Startup logs remain under TEMP and are not printed.'
+    Write-Output 'Seller: http://127.0.0.1:4191/resource | x402 HTTP 402 challenge confirmed | challenge-only=true'
+    Write-Output 'Only local GET requests were made. No payment payload was verified or settled.'
+    Write-Output 'Stop with .\demo\stop-safe-demo.ps1. Logs remain under TEMP and are not printed.'
+    Write-Output 'Buyer/sponsor signing keys and API bearer tokens were blanked in both demo processes.'
 } catch {
     foreach ($process in $started) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
     Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue

@@ -1,6 +1,8 @@
 import "./facilitator.test.mjs";
 import "./payment.test.mjs";
+import "./payment-transaction.test.mjs";
 import "./seller-resource-config.test.mjs";
+import "./vercel-proxy.test.mjs";
 import "./seller-challenge-only.test.mjs";
 import "./a2a-agent.test.mjs";
 import "./agent-card.test.mjs";

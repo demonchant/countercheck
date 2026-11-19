@@ -1,8 +1,14 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { config } from "./config.mjs";
-import { inspectBadge } from "./registry.mjs";
-import { createQuote } from "./payment.mjs";
+
+// MCP is read-only. Do not let its process load either Testnet signing key.
+process.env.CCD_PRIVATE_KEY = "";
+process.env.CCD_FACILITATOR_PRIVATE_KEY = "";
+const [{ config }, { inspectBadge }, { createQuote }] = await Promise.all([
+  import("./config.mjs"),
+  import("./registry.mjs"),
+  import("./payment.mjs"),
+]);
 
 const toolDefinitions = [
   {

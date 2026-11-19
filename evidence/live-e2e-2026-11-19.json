@@ -1,0 +1,37 @@
+{
+  "runAt": "2026-11-19T02:51:25.773Z",
+  "environment": "Concordium Testnet; local loopback buyer, seller, and facilitator services",
+  "workflow": [
+    { "stage": "negative seller check", "status": "seller-mismatch", "result": "Rejected a seller badge other than the locally configured seller before any payment request." },
+    { "stage": "seller Registry check", "status": "verified", "result": "Configured seller badge, card hash, and registered wallet check passed." },
+    { "stage": "x402 quote", "status": "quoted", "amountMicroCcd": "1000000", "asset": "CCD", "result": "Live exact-payment quote passed the fixed Testnet/payee/sponsor/expiry policy." },
+    { "stage": "transaction review", "status": "review_ready", "result": "Fresh nonce, balance, chain parameters, signer key match, unsigned transfer, and digest were prepared." },
+    { "stage": "approval", "status": "approved_unsubmitted", "result": "Approval was bound to the displayed signing digest after fresh identity, quote, and chain-state checks." },
+    { "stage": "settlement and fulfillment", "status": "paid_and_finalized", "result": "Facilitator confirmed finalization and a second Testnet gRPC read matched sender, recipient, amount, and native CCD. Seller returned paid=true." }
+  ],
+  "payment": {
+    "amountMicroCcd": "1000000",
+    "asset": "CCD",
+    "buyerSpendCapMicroCcd": "1000000",
+    "sponsorEstimatedFeeMicroCcd": "4621359",
+    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+    "transactionHash": "71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147",
+    "explorerUrl": "https://testnet.ccdscan.io/?d=transaction&dsh=71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147",
+    "sellerResponse": { "resource": "Countercheck Testnet demonstration resource", "paid": true, "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27" }
+  },
+  "receipt": {
+    "recordId": "c8085720-7c24-47eb-8724-fe7e17fbf00b",
+    "recordHash": "d6752d759f4cdc7c5f2fe942d15481d70d4d6b8048c8073d43f50032d315007b",
+    "qualificationRecordId": "b9c4ba2b-1d2d-44ed-9ff1-7922cdf7c2cb",
+    "qualificationRecordHash": "e58656f6899f4a96d9010534e022a58ada7a28b1baef3e8735a54e48742f92f7",
+    "chainReadbackVerified": true,
+    "independentExplorerInspection": false,
+    "qualification": "The original receipt flag was corrected by an appended hash-linked note: finality came from a second facilitator gRPC read; no separate explorer API read was made."
+  },
+  "limits": [
+    "This is one successful configured Testnet demonstration, not proof of production readiness or general reliability.",
+    "The receipt log is local and hash-linked; it is not externally anchored or immutable.",
+    "The CCDScan link is provided for a human independent inspection; explorer contents were not captured by this run.",
+    "Buyer and sponsor account addresses and credentials are intentionally omitted from this sanitized artifact."
+  ]
+}

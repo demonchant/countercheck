@@ -3,13 +3,15 @@ import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, missingPaymentSettings } from "./config.mjs";
+import { createBuyerApiAuthorizer } from "./api-auth.mjs";
 import { inspectBadge } from "./registry.mjs";
 import { appendAudit, recentAudit } from "./audit.mjs";
-import { confirmPurchase, createQuote } from "./payment.mjs";
+import { approveTransactionReview, confirmPurchase, createQuote, prepareTransactionReview } from "./payment.mjs";
 
 const root = resolve(fileURLToPath(new URL("../public", import.meta.url)));
 const contentTypes = new Map([[".html", "text/html; charset=utf-8"], [".css", "text/css; charset=utf-8"], [".js", "text/javascript; charset=utf-8"], [".svg", "image/svg+xml"]]);
 const expectedOrigin = `http://127.0.0.1:${config.port}`;
+const authorizeApiRequest = createBuyerApiAuthorizer({ remote: config.remoteDeployment, port: config.port, token: config.apiToken });
 
 function sendJson(response, status, value) {
   response.writeHead(status, {
@@ -32,13 +34,6 @@ async function readJson(request) {
   const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Request body must be a JSON object.");
   return body;
-}
-
-function authorizedLocalRequest(request) {
-  if (request.headers.host !== `127.0.0.1:${config.port}`) return false;
-  if (request.headers.origin !== expectedOrigin) return false;
-  if (request.headers["x-countercheck-request"] !== "1") return false;
-  return true;
 }
 
 async function serveStatic(pathname, response) {
@@ -70,8 +65,13 @@ async function serveStatic(pathname, response) {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", expectedOrigin);
-  if (request.method === "GET" && url.pathname.startsWith("/assets/")) return serveStatic(url.pathname, response);
-  if (request.method === "GET" && url.pathname === "/") return serveStatic("/", response);
+  if (request.method === "GET" && url.pathname === "/healthz") return sendJson(response, 200, { ok: true });
+  if (!config.remoteDeployment && request.method === "GET" && url.pathname.startsWith("/assets/")) return serveStatic(url.pathname, response);
+  if (!config.remoteDeployment && request.method === "GET" && url.pathname === "/") return serveStatic("/", response);
+
+  if (url.pathname.startsWith("/api/") && !authorizeApiRequest(request)) {
+    return sendJson(response, config.remoteDeployment ? 401 : 403, { error: config.remoteDeployment ? "unauthorized" : "local_origin_required" });
+  }
 
   if (request.method === "GET" && url.pathname === "/api/status") {
     return sendJson(response, 200, {
@@ -81,10 +81,15 @@ const server = createServer(async (request, response) => {
       registryEndpointConfigured: Boolean(config.registryBase),
       paymentReady: missingPaymentSettings().length === 0,
       paymentEnabled: config.paymentsEnabled,
+      settlementEnabled: config.settlementEnabled,
       paymentMissing: missingPaymentSettings(),
       sellerConfigured: Boolean(config.sellerBadge && config.sellerPayTo && config.sellerResourceUrl),
       note: "Configuration status only. This is not a live network-health check.",
     });
+  }
+  if (request.method === "GET" && url.pathname === "/api/demo-seller" && !config.remoteDeployment) {
+    if (!config.sellerBadge) return sendJson(response, 404, { error: "demo_seller_not_configured" });
+    return sendJson(response, 200, { badge: config.sellerBadge });
   }
   if (request.method === "GET" && url.pathname === "/api/receipts") {
     try { return sendJson(response, 200, { records: recentAudit(12) }); }
@@ -93,7 +98,6 @@ const server = createServer(async (request, response) => {
   if (!url.pathname.startsWith("/api/")) {
     response.writeHead(404); response.end("Not found"); return;
   }
-  if (!authorizedLocalRequest(request)) return sendJson(response, 403, { error: "This local action is allowed only from the Countercheck page on loopback." });
   if (request.method !== "POST") return sendJson(response, 405, { error: "Method not allowed." });
 
   let body;
@@ -110,16 +114,26 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/api/quote") {
     return sendJson(response, 200, await createQuote());
   }
-  if (url.pathname === "/api/purchase") {
+  if (url.pathname === "/api/prepare") {
     if (typeof body.quoteId !== "string") return sendJson(response, 400, { error: "quoteId must be a string." });
-    return sendJson(response, 200, await confirmPurchase(body.quoteId));
+    return sendJson(response, 200, await prepareTransactionReview(body.quoteId));
+  }
+  if (url.pathname === "/api/approve") {
+    if (typeof body.reviewId !== "string" || typeof body.signingDigest !== "string") {
+      return sendJson(response, 400, { error: "reviewId and signingDigest are required." });
+    }
+    return sendJson(response, 200, await approveTransactionReview(body.reviewId, body.signingDigest));
+  }
+  if (url.pathname === "/api/purchase") {
+    if (typeof body.approvalId !== "string" || typeof body.signingDigest !== "string") return sendJson(response, 400, { error: "approvalId and signingDigest are required." });
+    return sendJson(response, 200, await confirmPurchase(body.approvalId, body.signingDigest));
   }
   if (url.pathname === "/api/receipt/acknowledge") {
     if (typeof body.recordId !== "string" || typeof body.transactionHash !== "string" || !/^(?:0x)?[0-9a-f]{64}$/iu.test(body.transactionHash)) {
       return sendJson(response, 400, { error: "A receipt id and 32-byte transaction hash are required." });
     }
     const transactionHash = body.transactionHash.replace(/^0x/iu, "").toLowerCase();
-    const record = appendAudit({ status: "operator-recorded-explorer-check", parentId: body.recordId, transactionHash, independentCheck: true, note: "Operator-recorded explorer inspection; no automated CCDExplorer API read-back was made." });
+    const record = appendAudit({ status: "operator-attested-explorer-check", parentId: body.recordId, transactionHash, independentCheck: false, note: "Operator-attested explorer inspection; no automated CCDExplorer API read-back was made." });
     return sendJson(response, 200, { status: "recorded", record });
   }
   return sendJson(response, 404, { error: "Unknown endpoint." });
@@ -129,7 +143,7 @@ server.headersTimeout = 10_000;
 server.requestTimeout = 35_000;
 server.keepAliveTimeout = 5_000;
 server.listen(config.port, config.host, () => {
-  console.log(`Countercheck listening at ${expectedOrigin}`);
+  console.log(`Countercheck buyer API listening at ${config.host}:${config.port}`);
   console.log(`Concordium network: ${config.network}; payments ${config.paymentsEnabled ? "enabled by operator configuration" : "disabled"}`);
 });
 

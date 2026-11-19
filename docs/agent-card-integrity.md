@@ -1,10 +1,10 @@
 # Agent Card integrity and Registry update previews
 
-**Observed:** 12 November 2026, Testnet only. No card was published and no Registry transaction was signed or submitted.
+**Registry observations:** 12 November 2026, Testnet only. No card was published and no Registry transaction was signed or submitted in that review.
 
 ## Current candidate revision status
 
-The local Agent Cards have since been revised to declare genuine A2A v1 JSON-RPC interfaces and the separate seller x402 resource. They are candidate bytes only; the Render host has not deployed the endpoints, and these bytes have not been published or fetched from a public immutable URL. Current exact local bytes are buyer 3,424 bytes / SHA-256 `7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb`, seller 3,213 bytes / SHA-256 `7202e68e3f5001d3ca999bab63cc9f50fffdab5410b2177d92d5d08aaab444bf`. Both currently set `active=false`; seller `x402Support=false` because paid fulfillment is unavailable. Do not use these local hashes to build a Registry update.
+The cards remain candidates; their endpoint bytes have not been fetched from a deployed service or published at a commit-pinned URL. The project owner supplied `https://countercheck-seller-1146.onrender.com` for the seller after the 12 November review. Current repository card bytes are buyer 3,424 bytes / SHA-256 `7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb`, seller 3,234 bytes / SHA-256 `74712f093aeb6804ded21d975b2a3fff2e8eca97e2b3441cff1105b211586519`. Both set `active=false`; seller `x402Support=false` because the new public deployment is not verified. The local Testnet payment run did not publish these card bytes or update their Registry records. Do not use these local hashes to build a Registry update without an authorized card/URI reconciliation.
 
 The earlier unsigned previews below are superseded. They refer to the previous card bytes and must not be signed. After Render externally serves `/resource` and both A2A endpoints, set card activity fields to match observed service behavior, publish the final bytes, fetch the immutable URLs, compare exact bytes, hash the responses, and build new previews from a fresh Registry owner read.
 
@@ -17,7 +17,7 @@ The earlier unsigned previews below are superseded. They refer to the previous c
 
 Both cards are Active, but Registry verification is false because no public card URI is anchored. The buyer wallet matches the configured buyer account; the seller wallet matches the configured seller recipient.
 
-The local JSON files and current GitHub `main` raw responses are byte-for-byte identical. Their exact served-byte hashes are:
+At the time of the 12 November review, the local JSON files and GitHub `main` raw responses were byte-for-byte identical. Their exact served-byte hashes at that time were:
 
 | Card | Current public URL | Bytes | SHA-256 |
 |---|---|---:|---|
@@ -33,7 +33,7 @@ The raw bytes, history result and Registry observations are preserved in [`evide
 The field-level schema review, current A2A/Registry endpoint distinction, and deployment blockers are documented in [`docs/agent-card-service-audit.md`](agent-card-service-audit.md). The final cards cannot be selected until their real public interface URLs exist.
 
 - Keep the Concordium Testnet token address, owner, `agentWallet`, contract coordinates, registration ID, and verification link consistent with the fresh Registry read.
-- Keep the buyer card explicit that payments are disabled by default. Do not claim that the exact generated transaction is displayed for approval until the signing flow implements that boundary.
+- Keep the buyer card explicit that payments are disabled by default. The local product now displays and signs only a digest-bound reviewed transaction in the one captured Testnet flow; public card claims must remain limited to the actual deployed endpoint state.
 - Replace the seller's stale “no resource API is configured” description with: **“Concordium Testnet seller identity for Countercheck's opt-in loopback x402 v2 exact resource. When locally enabled, it serves a 1 CCD native CCD challenge using the configured Testnet seller recipient and sponsor. No public resource endpoint is deployed; settlement is disabled by default.”** Do not publish the loopback URL as a service available to remote agents.
 - Keep `services` empty until a reachable public service exists. Neither card currently has a public A2A/HTTP agent endpoint; both top-level `url` fields point to the card JSON itself. Do not present these cards as callable A2A endpoints. Correct the endpoint/schema when an actual A2A service is available, or keep the document clearly limited to Registry identity metadata.
 - The embedded `/v1/badge-check/{badge}` URL is a documented permanent alias, so it does not need changing for this Testnet repair.

@@ -1,0 +1,18 @@
+# Competitive analysis
+
+**Initial review:** 11 November 2026. **Source refresh:** 19 November 2026.
+
+| Alternative | What it already does well | Gap Countercheck could address | Limits/counter-evidence |
+|---|---|---|---|
+| x402 | Standard HTTP payment challenge, signed payment, facilitator verification/settlement, and paid resource delivery. Concordium's package adds sponsored network fees. | A buyer-side policy can connect seller identity, delegated approval and service-result evidence to a payment. | x402 is not portrayed as broken. Issue #2332 proposes action evidence and points to related Mycelium Trails work; issue #3500 discusses authorization-scope evidence. These show adjacent design work and weaken broad novelty claims; neither proves demand. [x402](https://github.com/x402-foundation/x402), [issue #2332](https://github.com/x402-foundation/x402/issues/2332), [issue #3500](https://github.com/x402-foundation/x402/issues/3500) |
+| ERC-8004 | Portable agent identity, reputation and validation registry concepts. | Concordium's verified-human accountability and CIS-8 external key link can be checked before a buyer pays; local policy can bind this result to a paid request. | ERC-8004 and Concordium's CIS-8004 are complementary standards. Countercheck is a workflow atop registries, not a replacement or uniqueness claim. [Spec](https://github.com/erc-8004/erc-8004-contracts/blob/master/ERC8004SPEC.md) |
+| Concordium Agent Registry and Registry MCP | Ready-made registration, card generation, badge creation/checking, hosted MCP reads and transaction builders. | A fixed verify → cap → explicit approval → payment → local receipt path makes the result usable in buyer operations. | A thin wrapper would duplicate sponsor services. The distinction is the combined buyer decision path, not novel Registry functionality. The 19 Nov run verified the configured integration once. [MCP docs](https://docs.concordium.com/en/mainnet/technical-reference/agent-registry/mcp-service.html) |
+| Existing directories/reputation dashboards | Agent discovery, profile presentation, on-chain identity or reputation signals. | Buyer-side enforcement at the moment of a specific paid request, rather than discovery alone. | This is an inferred product gap; no head-to-head user study or bounded exhaustive competitor search has been done. |
+| x402-doctor | No-fund diagnostics for x402 challenges, protocol versions, malformed headers, payment options and MCP payability. | It does not by itself combine Concordium's buyer/seller registry identity and wallet facts with this project's fixed buyer policy. | This is a repository/tool comparison, not a full market scan. Do not claim Countercheck is the first or only challenge checker. [Repository](https://github.com/Fizzl13/x402-doctor), retrieved 19 Nov 2026. |
+
+## Differentiation hypothesis
+
+Countercheck's narrow distinction is the enforced buyer-side sequence combining current Concordium seller identity/card/wallet facts with the buyer's exact x402 policy before payment. A local hash-linked receipt records the configured payment and response evidence. It should not claim to detect fraud, prove service quality, be unique, or establish legal compliance. Mycelium Trails is described in issue #2332 as adjacent payment/action anchoring work, and issue #3500 separately raises delegated-scope evidence.
+
+**Narrow differentiation shown in one capture:** [`../evidence/live-e2e-2026-11-19.json`](../evidence/live-e2e-2026-11-19.json) records the integrated review, sponsored 1 CCD payment, finality read-back, paid fulfillment, and local receipt. This demonstrates the configured mechanism once, not user value, broad reliability, independent explorer inspection, or novel receipt technology.
+

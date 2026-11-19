@@ -70,7 +70,7 @@ function memoryStore() {
   };
 }
 
-function fixture({ verifyResult = { isValid: true, payer: buyer }, settleResult = { success: true, transaction: "a".repeat(64), network, payer: buyer }, finalizedInfo = { status: "finalized", sender: buyer, recipient: seller, amount: "125000", asset: "CCD" }, balance = 50000n, enabled = true, settleDelayMs = 0 } = {}) {
+function fixture({ verifyResult = { isValid: true, payer: buyer }, settleResult = { success: true, transaction: "a".repeat(64), network, payer: buyer }, finalizedInfo = { status: "finalized", sender: buyer, recipient: seller, amount: "125000", asset: "CCD" }, balance = 50000n, enabled = true, settleDelayMs = 0, store: suppliedStore } = {}) {
   const calls = { verify: 0, settle: 0, activeSettles: 0, maxConcurrentSettles: 0, sponsorBalance: 0 };
   const scheme = {
     async verify() { calls.verify += 1; return verifyResult; },
@@ -83,7 +83,7 @@ function fixture({ verifyResult = { isValid: true, payer: buyer }, settleResult 
       return settleResult;
     },
   };
-  const store = memoryStore();
+  const store = suppliedStore || memoryStore();
   const api = createFacilitatorApi({
     scheme,
     store,
@@ -278,6 +278,21 @@ test("persistent store claims a canonical payload only once across store instanc
   assert.equal(secondStore.get(key).status, "finalized");
 });
 
+test("finalized payment replay remains blocked after reopening the persistent store", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "countercheck-facilitator-restart-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const first = fixture({ store: createSettlementStore(directory) });
+  const value = request();
+  const settled = await first.api.settle(value.paymentPayload, value.paymentRequirements);
+  const afterRestart = fixture({ store: createSettlementStore(directory) });
+  const replay = await afterRestart.api.settle(value.paymentPayload, value.paymentRequirements);
+  assert.equal(settled.success, true);
+  assert.deepEqual(replay, settled);
+  assert.equal(first.calls.settle, 1);
+  assert.equal(afterRestart.calls.settle, 0);
+  assert.equal(createSettlementStore(directory).get(settlementKey(value.paymentPayload)).status, "finalized");
+});
+
 test("duplicate payment payload returns prior result without a second settlement", async () => {
   const { api, calls } = fixture();
   const { paymentPayload, paymentRequirements } = request();
@@ -347,9 +362,10 @@ test("settlement stays disabled unless the explicit setting is enabled", async (
 });
 
 test("local HTTP API requires a bearer token for verify and settle", async (context) => {
+  let verifyCalls = 0;
   const api = {
     getSupported: () => ({ kinds: [{ x402Version: 2, scheme: "exact", network }] }),
-    async verify() { return { isValid: true }; },
+    async verify() { verifyCalls += 1; return { isValid: true }; },
     async settle() { return { success: false, errorReason: "settlement_disabled", transaction: "", network }; },
   };
   const config = { port: 0, network, settlementEnabled: false, apiToken: "a".repeat(40) };
@@ -365,4 +381,19 @@ test("local HTTP API requires a bearer token for verify and settle", async (cont
     body: JSON.stringify({ x402Version: 2, paymentPayload: {}, paymentRequirements: {} }),
   });
   assert.equal(unauthorized.status, 401);
+  const value = request();
+  const badBearer = await fetch(`${url}/verify`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${"b".repeat(40)}` },
+    body: JSON.stringify({ x402Version: 2, ...value }),
+  });
+  assert.equal(badBearer.status, 401);
+  const authorized = await fetch(`${url}/verify`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${config.apiToken}` },
+    body: JSON.stringify({ x402Version: 2, ...value }),
+  });
+  assert.equal(authorized.status, 200);
+  assert.equal((await authorized.json()).isValid, true);
+  assert.equal(verifyCalls, 1);
 });

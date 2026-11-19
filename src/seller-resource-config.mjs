@@ -1,5 +1,31 @@
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
+/** Resolve the x402 facilitator API base URL without allowing public URLs in Render. */
+export function resolveFacilitatorUrl(configuredUrl, { render = false } = {}) {
+  const value = configuredUrl || (render ? "" : "http://127.0.0.1:4180");
+  if (!value) throw new Error("FACILITATOR_URL must reference the private facilitator service on Render.");
+  const candidate = value.includes("://") ? value : `http://${value}`;
+  let parsed;
+  try { parsed = new URL(candidate); }
+  catch { throw new Error("FACILITATOR_URL must be a valid absolute URL or Render host:port value."); }
+
+  if (parsed.protocol !== "http:" || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search || parsed.hash) {
+    throw new Error("FACILITATOR_URL must be a clean HTTP origin without credentials, path, query, or fragment.");
+  }
+
+  if (render) {
+    if (LOOPBACK_HOSTS.has(parsed.hostname) || parsed.hostname.toLowerCase().endsWith(".onrender.com")) {
+      throw new Error("Render seller must use the facilitator's private-network hostname, not loopback or a public URL.");
+    }
+  } else if (!LOOPBACK_HOSTS.has(parsed.hostname)) {
+    throw new Error("Outside Render, FACILITATOR_URL must use loopback.");
+  }
+
+  const port = Number(parsed.port);
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("FACILITATOR_URL must include a valid port.");
+  return parsed.origin;
+}
+
 export function renderResourceUrl(renderExternalUrl) {
   if (!renderExternalUrl) return "";
   let platformUrl;
@@ -9,6 +35,26 @@ export function renderResourceUrl(renderExternalUrl) {
     throw new Error("Render external URL must be an HTTPS origin.");
   }
   return new URL("/resource", platformUrl).toString();
+}
+
+/** Resolve the seller's public HTTPS resource URL used by the buyer API. */
+export function resolveBuyerSellerResourceUrl({ configuredUrl, renderExternalUrl, render = false }) {
+  let value = configuredUrl || "";
+  if (render && !value && renderExternalUrl) value = renderResourceUrl(renderExternalUrl);
+  if (!value) return "";
+  let parsed;
+  try { parsed = new URL(value); }
+  catch { throw new Error("SELLER_RESOURCE_URL must be a valid absolute URL."); }
+  if (render && parsed.protocol === "https:" && parsed.pathname === "/" && !parsed.search && !parsed.hash && !parsed.username && !parsed.password) {
+    parsed.pathname = "/resource";
+  }
+  const localHttp = parsed.protocol === "http:" && LOOPBACK_HOSTS.has(parsed.hostname);
+  if (parsed.protocol !== "https:" && !localHttp) throw new Error("SELLER_RESOURCE_URL must use HTTPS (HTTP is allowed only for loopback development).");
+  if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/resource") {
+    throw new Error("SELLER_RESOURCE_URL must be a clean /resource URL without credentials, query, or fragment.");
+  }
+  if (render && localHttp) throw new Error("Render buyer API cannot use a loopback seller resource URL.");
+  return parsed.toString();
 }
 
 /**

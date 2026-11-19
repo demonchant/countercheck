@@ -29,3 +29,118 @@ services:
         sync: false
       - key: CCD_FACILITATOR_ADDRESS
         sync: false
+      - key: FACILITATOR_URL
+        fromService:
+          name: countercheck-facilitator-1146
+          type: pserv
+          property: hostport
+      - key: FACILITATOR_API_TOKEN
+        fromService:
+          name: countercheck-facilitator-1146
+          type: pserv
+          envVarKey: FACILITATOR_API_TOKEN
+  - type: web
+    name: countercheck-buyer-api
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm ci
+    startCommand: npm start
+    autoDeployTrigger: off
+    disk:
+      name: buyer-api-audit
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: BUYER_API_SERVICE
+        value: "true"
+      - key: PAYMENTS_ENABLED
+        value: "false"
+      - key: MAX_SPEND_MICROCCD
+        value: "1000000"
+      - key: AUDIT_LOG_PATH
+        value: /var/data/receipts.jsonl
+      - key: CONCORDIUM_NETWORK
+        value: ccd:4221332d34e1694168c2a0c0b3fd0f27
+      - key: SELLER_RESOURCE_URL
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: BUYER_API_TOKEN
+        generateValue: true
+      - key: CCD_PRIVATE_KEY
+        sync: false
+      - key: BUYER_BADGE
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: BUYER_BADGE
+      - key: CCD_ACCOUNT_ADDRESS
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: CCD_ACCOUNT_ADDRESS
+      - key: SELLER_BADGE
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: SELLER_BADGE
+      - key: SELLER_PAY_TO
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: SELLER_PAY_TO
+      - key: CCD_FACILITATOR_ADDRESS
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: CCD_FACILITATOR_ADDRESS
+  - type: pserv
+    name: countercheck-facilitator-1146
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm ci
+    startCommand: npm run facilitator
+    autoDeployTrigger: off
+    disk:
+      name: facilitator-settlements
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: FACILITATOR_PRIVATE_SERVICE
+        value: "true"
+      - key: FACILITATOR_HOST
+        value: 0.0.0.0
+      - key: FACILITATOR_PORT
+        value: "4180"
+      - key: FACILITATOR_SETTLEMENT_ENABLED
+        value: "false"
+      - key: FACILITATOR_STORE_PATH
+        value: /var/data/facilitator-settlements
+      - key: FACILITATOR_MAX_AMOUNT_MICROCCD
+        value: "1000000"
+      - key: FACILITATOR_MIN_SPONSOR_BALANCE_MICROCCD
+        value: "10000"
+      - key: CONCORDIUM_NETWORK
+        value: ccd:4221332d34e1694168c2a0c0b3fd0f27
+      - key: CCD_ACCOUNT_ADDRESS
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: CCD_ACCOUNT_ADDRESS
+      - key: SELLER_PAY_TO
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: SELLER_PAY_TO
+      - key: CCD_FACILITATOR_ADDRESS
+        fromService:
+          name: countercheck-seller-1146
+          type: web
+          envVarKey: CCD_FACILITATOR_ADDRESS
+      - key: FACILITATOR_API_TOKEN
+        generateValue: true
+      - key: CCD_FACILITATOR_PRIVATE_KEY
+        sync: false
