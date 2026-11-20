@@ -82,6 +82,7 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", expectedOrigin);
   if (request.method === "GET" && url.pathname === "/healthz") return sendJson(response, 200, { ok: true });
   if (!config.remoteDeployment && request.method === "GET" && url.pathname.startsWith("/assets/")) return serveStatic(url.pathname, response);
+  if (!config.remoteDeployment && request.method === "GET" && ["/app.css", "/app.js"].includes(url.pathname)) return serveStatic(url.pathname, response);
   if (!config.remoteDeployment && request.method === "GET" && url.pathname === "/") return serveStatic("/", response);
 
   if (url.pathname.startsWith("/api/") && !authorizeApiRequest(request)) {
