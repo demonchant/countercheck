@@ -1,8 +1,9 @@
-import { verifyToken } from "@clerk/backend";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const ROUTES = new Map([
   ["GET /api/status", "GET"],
   ["GET /api/session", "GET"],
+  ["GET /api/demo-seller", "GET"],
   ["GET /api/receipts", "GET"],
   ["POST /api/verify", "POST"],
   ["POST /api/quote", "POST"],
@@ -12,7 +13,8 @@ const ROUTES = new Map([
   ["POST /api/receipt/acknowledge", "POST"],
 ]);
 
-const USER_ROUTES = new Set([
+const SESSION_ROUTES = new Set([
+  "GET /api/session",
   "GET /api/receipts",
   "POST /api/quote",
   "POST /api/prepare",
@@ -21,28 +23,35 @@ const USER_ROUTES = new Set([
   "POST /api/receipt/acknowledge",
 ]);
 
-function list(value) {
-  return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+const GUEST_COOKIE = "countercheck_guest";
+const GUEST_COOKIE_MAX_AGE = 60 * 60 * 24;
+
+function guestCookieValue(request) {
+  const cookies = String(request.headers?.cookie || "").split(";");
+  return cookies.map((cookie) => cookie.trim()).find((cookie) => cookie.startsWith(`${GUEST_COOKIE}=`))?.slice(GUEST_COOKIE.length + 1) || "";
 }
 
-function authConfig(env) {
-  const publishableKey = env.CLERK_PUBLISHABLE_KEY || "";
-  const jwtKey = env.CLERK_JWT_KEY || "";
-  const authorizedParties = list(env.CLERK_AUTHORIZED_PARTIES);
-  const allowedUserIds = new Set(list(env.COUNTERCHECK_ALLOWED_USER_IDS));
-  const enabled = publishableKey.startsWith("pk_") && jwtKey.includes("BEGIN PUBLIC KEY") && authorizedParties.length > 0;
-  const purchasesEnabled = enabled
-    && allowedUserIds.size > 0
-    && env.COUNTERCHECK_PUBLIC_PURCHASES_ENABLED === "true";
-  return { publishableKey, jwtKey, authorizedParties, allowedUserIds, enabled, purchasesEnabled };
-}
-
-export function publicBuyerAuthConfig(env = process.env) {
-  const config = authConfig(env);
+function guestIdentity(request, response, apiToken, secureCookie) {
+  const key = createHash("sha256").update(apiToken).digest();
+  const value = guestCookieValue(request);
+  const [issuedAtText, id, suppliedSignature, extra] = value.split(".");
+  const issuedAt = Number(issuedAtText);
+  const nowSeconds = Math.floor(Date.now() / 1_000);
+  let valid = false;
+  if (!extra && /^\d{10}$/u.test(issuedAtText || "") && nowSeconds >= issuedAt && nowSeconds - issuedAt <= GUEST_COOKIE_MAX_AGE
+    && /^[a-f0-9]{64}$/u.test(id || "") && /^[a-f0-9]{64}$/u.test(suppliedSignature || "")) {
+    const expected = createHmac("sha256", key).update(`${issuedAtText}.${id}`).digest();
+    const supplied = Buffer.from(suppliedSignature, "hex");
+    valid = supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  }
+  const sessionId = valid ? `${issuedAtText}_${id}` : `${nowSeconds}_${randomBytes(32).toString("hex")}`;
+  if (!valid) {
+    const [newIssuedAt, randomId] = sessionId.split("_");
+    const signature = createHmac("sha256", key).update(`${newIssuedAt}.${randomId}`).digest("hex");
+    response.setHeader?.("set-cookie", `${GUEST_COOKIE}=${newIssuedAt}.${randomId}.${signature}; Path=/; Max-Age=${GUEST_COOKIE_MAX_AGE}; HttpOnly; SameSite=Lax${secureCookie ? "; Secure" : ""}`);
+  }
   return {
-    enabled: config.enabled,
-    publishableKey: config.enabled ? config.publishableKey : "",
-    purchasesEnabled: config.purchasesEnabled,
+    ownerKey: `user_guest_${sessionId}:sess_guest_${sessionId}`,
   };
 }
 
@@ -89,73 +98,28 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-async function authenticateBuyer(request, config) {
-  const authorization = String(request.headers?.authorization || "");
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  if (!token) return { error: { status: 401, code: "sign_in_required" } };
-  try {
-    const verified = await verifyToken(token, {
-      jwtKey: config.jwtKey,
-      authorizedParties: config.authorizedParties,
-    });
-    const claims = verified.data;
-    if (verified.errors || typeof claims?.sub !== "string" || typeof claims?.sid !== "string") {
-      return { error: { status: 401, code: "invalid_session" } };
-    }
-    return {
-      userId: claims.sub,
-      sessionId: claims.sid,
-      ownerKey: `${claims.sub}:${claims.sid}`,
-      allowed: config.allowedUserIds.has(claims.sub),
-    };
-  } catch {
-    return { error: { status: 401, code: "invalid_session" } };
-  }
-}
-
-export async function handleBuyerAuthConfig(request, response, env = process.env) {
-  if (request.method !== "GET" || (request.url && new URL(request.url, "https://vercel.invalid").search)) {
-    return sendJson(response, 404, { error: "not_found" });
-  }
-  response.writeHead(200, {
-    "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-    "x-content-type-options": "nosniff",
-  });
-  response.end(JSON.stringify(publicBuyerAuthConfig(env)));
-}
-
 export async function handleBuyerApiProxy(request, response, env = process.env) {
   if (env.COUNTERCHECK_API_PROXY_ENABLED !== "true") return sendJson(response, 503, { error: "api_proxy_not_configured" });
   if (!allowedBuyerApiRoute(request.method || "", request.url || "/")) return sendJson(response, 404, { error: "not_found" });
   const method = request.method || "";
   const pathname = new URL(request.url, "https://vercel.invalid").pathname;
-  const config = authConfig(env);
+  const purchasesEnabled = env.COUNTERCHECK_PUBLIC_PURCHASES_ENABLED === "true";
   if (pathname === "/api/status" && method === "GET") {
-    return proxyToBuyerApi(request, response, env, pathname, undefined, config);
+    return proxyToBuyerApi(request, response, env, pathname, undefined, { purchasesEnabled });
   }
+  const token = env.COUNTERCHECK_API_TOKEN || "";
+  if (token.length < 32) return sendJson(response, 503, { error: "api_proxy_not_configured" });
   if (pathname === "/api/session" && method === "GET") {
-    if (!config.enabled) return sendJson(response, 503, { error: "individual_authorization_not_configured" });
-    const identity = await authenticateBuyer(request, config);
-    if (identity.error) return sendJson(response, identity.error.status, { error: identity.error.code });
-    return sendJson(response, 200, {
-      authenticated: true,
-      authorized: identity.allowed,
-      userId: identity.userId,
-      purchasesEnabled: config.purchasesEnabled,
-    });
+    guestIdentity(request, response, token, env.VERCEL === "1");
+    return sendJson(response, 200, { guestSession: true, purchasesEnabled });
   }
-
   let identity;
-  if (USER_ROUTES.has(`${method} ${pathname}`)) {
-    if (!config.enabled) return sendJson(response, 503, { error: "individual_authorization_not_configured" });
-    identity = await authenticateBuyer(request, config);
-    if (identity.error) return sendJson(response, identity.error.status, { error: identity.error.code });
-    if (!identity.allowed) return sendJson(response, 403, { error: "buyer_user_not_authorized" });
-    if (!config.purchasesEnabled) return sendJson(response, 403, { error: "testnet_purchases_not_enabled" });
+  if (SESSION_ROUTES.has(`${method} ${pathname}`)) {
+    identity = guestIdentity(request, response, token, env.VERCEL === "1");
+    if (!purchasesEnabled && pathname !== "/api/receipts") return sendJson(response, 403, { error: "testnet_purchases_not_enabled" });
   }
 
-  return proxyToBuyerApi(request, response, env, pathname, identity, config);
+  return proxyToBuyerApi(request, response, env, pathname, identity, { purchasesEnabled });
 }
 
 async function proxyToBuyerApi(request, response, env, pathname, identity, config) {
@@ -193,7 +157,6 @@ async function proxyToBuyerApi(request, response, env, pathname, identity, confi
     if (pathname === "/api/status" && upstream.ok) {
       try {
         const status = JSON.parse(output.toString("utf8"));
-        status.individualAuthorizationEnabled = config.enabled && config.allowedUserIds.size > 0;
         status.publicPurchasesEnabled = config.purchasesEnabled;
         status.paymentEnabled = status.paymentEnabled === true && status.settlementEnabled === true && config.purchasesEnabled;
         output = Buffer.from(JSON.stringify(status));

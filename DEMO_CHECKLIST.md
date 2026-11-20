@@ -5,13 +5,14 @@
 - [ ] **Review-only / challenge mode:** start `powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\start-safe-demo.ps1`. Keys and API tokens are blanked; paid fulfillment is refused.
 - [ ] **Full Testnet mode:** configure `.env` privately, then start `powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\start-testnet-demo.ps1 -EnableTestnetSettlement`. The launcher checks live Registry, seller quote, and unsigned transaction review before reporting ready.
 - [ ] Open `http://127.0.0.1:4173` and confirm **TESTNET SETTLEMENT ON** only for the full mode. Keep all services on loopback.
-- [ ] Describe this as a one-operator local demo. The digest approval is authorization for that transaction, not per-user login; do not enable or imply public buyer payments.
+- [ ] Describe this as a one-operator local demo. The digest approval is consent to that transaction, not account authentication. The hosted app's guest cookie only scopes browser session state; it does not identify or authorize the visitor.
 - [ ] Do not screen-record `.env`, terminal environment dumps, logs, private keys, recovery phrases, wallet exports, or unrelated desktop content.
 
 ## Record the workflow
 
 - [ ] Click **Show a blocked check**. It fills `demo-invalid-seller` and returns `seller-mismatch` against the configured seller; this is intentional, makes no chain call, and spends nothing.
 - [ ] Click **Load demo seller** next. It fills the configured `SELLER_BADGE` from the local app settings and starts the real Registry/card/wallet check. If it says the seller is not configured, stop and privately set `SELLER_BADGE` and matching seller settings in `.env`, restart, and retry.
+- [ ] For a hosted read-only preview, open the deployed page, confirm **TESTNET PAYMENTS LOCKED**, then click **Load demo seller**. It reads the public seller badge from the buyer API through the Vercel proxy. If the buyer API reports `demo_seller_not_configured`, set `SELLER_BADGE` in that service's private configuration.
 - [ ] Request the quote and show exact network, asset, payee, sponsor, expiry, and spend ceiling.
 - [ ] Prepare the transaction review. Show the exact parties, amount, fee, nonce, expiry, signer check, and digest.
 - [ ] Approve the exact digest. Explain that fresh checks run again before signing.
@@ -23,7 +24,7 @@
 
 ## Evidence and boundaries
 
-One live Testnet run on 19 November 2026 rejected a mismatched seller, verified the configured seller, accepted the live quote, prepared and approved the exact transaction, settled, confirmed finality through a second facilitator gRPC read, and received the paid seller response. The 1 CCD transaction hash and sanitized evidence are in [`evidence/live-e2e-2026-11-19.json`](evidence/live-e2e-2026-11-19.json). The explorer page was not inspected during that run. This proves one configured Testnet workflow, not production readiness, adoption, or general reliability.
+One live Testnet run on 19 November 2026 rejected a mismatched seller, verified the configured seller, accepted the live quote, prepared and approved the exact transaction, settled, confirmed finality through a second facilitator gRPC read, and received the paid seller response. The 1 CCD transaction hash and sanitized evidence are in [`evidence/live-e2e-2026-11-19.json`](evidence/live-e2e-2026-11-19.json). The explorer page was not inspected during that run. This proves one configured Testnet workflow, not production readiness, adoption, or general reliability. The hosted guest-session implementation is not independently deployed or verified.
 
 If Registry, seller, facilitator, or chain preflight fails, show the real blocked state. Do not splice a historical receipt into a new recording as if it followed the current click. The badge verifies registration and card integrity only. Local receipts are hash-linked, not externally anchored or immutable.
 

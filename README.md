@@ -29,7 +29,7 @@ The optional local AI assistant can request read-only identity and quote checks.
 - Buyer API health: [countercheck-1-lecq.onrender.com/healthz](https://countercheck-1-lecq.onrender.com/healthz)
 - Seller x402 challenge: [countercheck-seller-1146.onrender.com/resource](https://countercheck-seller-1146.onrender.com/resource)
 
-The seller resource returns HTTP 402 with an x402 challenge; this is the expected response before payment. Hosted buyer purchases now require an individually authenticated Clerk account, an explicit allowlist entry, and a same-session approval of the exact transaction. They remain blocked until the Clerk and Testnet settings in [Vercel configuration](docs/vercel-configuration.md) are complete. Authorized users share the buyer API's one configured Testnet account. Use the local Testnet setup below for the complete review, approval, and settlement flow without a Clerk account.
+The seller resource returns HTTP 402 with an x402 challenge; this is the expected response before payment. The hosted app uses an anonymous guest session and keeps purchases blocked unless the Vercel public-purchase switch and the Render buyer/settlement gates are explicitly enabled. If enabled, any visitor can authorize a reviewed payment from the shared configured Testnet buyer account. The 1 CCD ceiling is per transaction, not an aggregate budget. Use the local Testnet setup below for the complete operator-controlled recording flow. See [Vercel configuration](docs/vercel-configuration.md).
 
 ## Run the local Testnet demo
 
@@ -62,9 +62,9 @@ This proves the configured flow worked once. It does not establish production re
 ## Boundaries
 
 - Concordium Testnet only; one configured buyer, seller, and sponsor; native CCD; a 1 CCD cap.
-- Hosted purchases require a Clerk user allowlist and bind each quote, review, approval, and purchase to the same user session. A person must still approve each exact transaction.
-- The hosted buyer uses one configured Testnet buyer account shared by its allowlisted users. Its 1 CCD cap applies per payment, not as a shared aggregate budget.
-- Hosted purchase requests stay blocked until both the Vercel authorization/purchase gate and the Render buyer/facilitator Testnet gates are configured.
+- Hosted purchases bind each quote, review, approval, and purchase to a signed guest-browser session. This scopes transaction state and receipt history; it does not identify or authorize a person.
+- If hosted purchases are enabled, any visitor can approve payments from the one configured Testnet buyer account. Its 1 CCD cap applies per payment, not as a shared aggregate budget.
+- Hosted purchase requests stay blocked until the Vercel public-purchase switch and the Render buyer/facilitator Testnet gates are configured.
 - The local receipt is hash-linked but can be rewritten by a privileged filesystem actor. It is not externally anchored or immutable.
 - Registry checks confirm registered identity and card/wallet consistency. They do not guarantee seller behavior, current wallet control, service quality, or legal compliance.
 - No direct buyer interviews, pilot, adoption data, or willingness-to-pay validation are claimed.

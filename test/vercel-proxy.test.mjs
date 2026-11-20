@@ -45,5 +45,9 @@ test("Vercel proxy sends its bearer only to the configured buyer API and returns
   assert.equal(result.status, 200);
   assert.equal(result.headers["cache-control"], "no-store");
   assert.equal(receivedAuthorization, `Bearer ${secret}`);
-  assert.deepEqual(JSON.parse(result.body), { project: "Countercheck", paymentEnabled: false });
+  assert.deepEqual(JSON.parse(result.body), {
+    project: "Countercheck",
+    paymentEnabled: false,
+    publicPurchasesEnabled: false,
+  });
 });

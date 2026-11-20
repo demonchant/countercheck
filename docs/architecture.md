@@ -4,7 +4,7 @@
 
 ## Product definition
 
-Countercheck is a local buyer-side operator tool for one configured paid seller. Its deterministic path checks buyer/seller Concordium Testnet badges, card hashes and registered `agentWallet` values; matches the seller wallet to the x402 recipient; checks the quote against a fixed exact-payment policy; prepares the sponsored transfer for review; binds approval to its digest; signs and submits through the local facilitator; and waits for finality and paid fulfillment. One captured run verifies this configured path only. An optional local Ollama assistant can explain or request the two read-only MCP checks; it has no signing/payment tools, and no model-quality evaluation is documented. Badges do not authorize spending or establish service quality.
+Countercheck is a buyer-side operator tool for one configured paid seller. Its deterministic path checks buyer/seller Concordium Testnet badges, card hashes and registered `agentWallet` values; matches the seller wallet to the x402 recipient; checks the quote against a fixed exact-payment policy; prepares the sponsored transfer for review; binds approval to its digest; signs and submits through the configured facilitator; and waits for finality and paid fulfillment. One captured local run verifies this configured path only. An optional local Ollama assistant can explain or request the two read-only MCP checks; it has no signing/payment tools, and no model-quality evaluation is documented. Badges do not authorize spending or establish service quality. The hosted Vercel surface uses signed anonymous guest-browser sessions; they scope quote/review/receipt state but do not identify or authorize buyers.
 
 ### Data flow
 
@@ -55,6 +55,7 @@ sequenceDiagram
 | Component | Responsibility | Authority/secret boundary | State/failure |
 |---|---|---|---|
 | `public/` | Badge entry, quote review, transaction review/approval, explicit payment action, status/receipt display. | No signing key. Same-origin JSON requests only. | Safe mode disables signing/payment; full configured Testnet mode requires a separate explicit click. |
+| `api/` and `src/vercel-api-proxy.mjs` | Route-allowlisted Vercel functions proxy status, configured seller badge, guest-session-bound quote/review/payment calls, and receipts to the buyer API. | Buyer API bearer stays in Vercel server environment. Guest cookies are signed with an HMAC key derived from the bearer token and marked HttpOnly/Secure/SameSite; server creates the identity header. | Clerk is not used. A guest cookie scopes one browser session but is not identity or authorization. Public payment switch defaults off; if enabled, every visitor can use the shared configured Testnet buyer account. |
 | `src/server.mjs` | Loopback HTTP API; content limits, origin/header checks, static UI, status. | Binds only to `127.0.0.1`; rejects non-loopback config. | Request body ≤8 KB; no public exposure/authentication. |
 | `src/registry.mjs` | Hosted Registry REST check and MCP `get_agent_wallet` call; verifies testnet badge/card and exact payment-wallet equality. | Read-only. No key sent to Registry service. | Timeout, schema drift, revoked/missing badge, hash mismatch, wallet missing, recipient mismatch all fail closed. |
 | `src/payment.mjs` | Fixed seller challenge read, quote policy, fresh transaction review, digest-bound approval, signing, purchase and paid-result verification. | Buyer key remains server-side; review checks it matches the supported first credential key. Approval and signing are separate user actions. | Quotes/reviews expire; changed identity, challenge, nonce, balance or transaction invalidates approval. Ambiguous settlement remains unresolved and must not be retried blindly. |
@@ -89,11 +90,11 @@ The recorded run's facilitator performs a second Testnet gRPC read and matches f
 ## Security and residual risk
 
 - The signing key is a highly sensitive local process secret. Use a dedicated low-balance testnet account, never a personal/mainnet key. Do not expose it in browser code, MCP tool context, shell output, logs, screenshots, or Git.
-- Do not expose the local server beyond loopback; the current build has no multi-user auth. The browser requires exact local `Origin`, `Host`, JSON content type and custom header.
+- Keep the local server on loopback; its API requires exact local `Origin`, `Host`, JSON content type and custom header. The hosted anonymous guest cookie scopes session state, but does not authenticate a person or prevent public access when payments are enabled.
 - Seller URL is fixed in operator configuration, never supplied to the HTTP API. This avoids arbitrary-URL/SSRF input. Require HTTPS except for a loopback seller.
 - Redirects are rejected. Registry inputs are bounded and encoded. Registry/MCP output is untrusted; only required booleans, statuses, wallet strings and exact payment requirements are interpreted.
 - Payment policy is limited to Testnet and `exact`, native CCD, exact seller recipient, a hard 1 CCD ceiling, short expiry, and current buyer/seller verification. The browser displays the exact transaction fields and requires digest-bound approval after rechecks. MCP has no payment tool. One full payment path is verified in the 19 November capture.
-- The seller resource, buyer payment and facilitator settlement flags default off. The seller route generates 1 CCD requirements through the x402 SDK; it does not substitute a static challenge fixture.
+- The seller resource, buyer payment, Vercel public-purchase and facilitator settlement flags default off. The seller route generates 1 CCD requirements through the x402 SDK; it does not substitute a static challenge fixture.
 - Facilitator sponsorship does not eliminate amount risk or sender signing. The agent wallet needs the payment asset. Do not claim the service is free.
 - Badge verification proves the registry's accountability claim and card integrity only. It does not attest to conduct. CIS-8 external-key binding is not necessarily proof of present-day control of an arbitrary smart wallet.
 - No third-party data is logged except the minimal public badge, response digest, payment reference and status. Full response data is shown transiently in the local UI only; it is not persisted.
@@ -107,5 +108,5 @@ The recorded run's facilitator performs a second Testnet gRPC read and matches f
 | Network | Concordium Testnet only (`ccd:4221332d34e1694168c2a0c0b3fd0f27`). | Configuration rejects other network IDs. |
 | Payment | `@x402/concordium` exact scheme; x402 package versions pinned at 2.30.0; `@concordium/web-sdk` pinned at stable 12.0.2. | x402 npm registry showed 2.30.0 as current on 11 Nov; package README was served at 2.28.0 during review, so inspect installed API and lockfile before any payment attempt. SDK 12.0.2 was the stable npm version; 13.x was alpha. |
 | Persistence | Local append-only JSONL with chained hashes. | One local operator and minimal receipt; no need for remote account/database yet. Revisit for shared deployments, tamper-resistant external anchoring, or retention requirements. |
-| UI/server | Node built-in HTTP + static accessible UI. | No framework requirement; keeps the demo small and local. Add auth before any remote bind. |
+| UI/server | Node built-in HTTP + static accessible UI; Vercel proxy for the hosted buyer API. | Keeps the local demo small. Public hosted purchases require deliberate operator enablement and remain an anonymous shared-account Testnet surface. |
 

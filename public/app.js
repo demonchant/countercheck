@@ -8,122 +8,46 @@ const quotePanel = $("#quote-panel");
 const verificationResult = $("#verification-result");
 const registryState = $("#registry-state");
 const announcer = $("#announcer");
-const authState = $("#auth-state");
-const authButton = $("#auth-button");
-const clerkUserButton = $("#clerk-user-button");
+const sessionState = $("#session-state");
 const localDemo = ["127.0.0.1", "localhost", "[::1]"].includes(window.location.hostname);
 let currentVerification = null;
 let currentQuote = null;
-let clerkInstance = null;
-let buyerSession = { configured: localDemo, authenticated: localDemo, authorized: localDemo, purchasesEnabled: localDemo };
+let buyerSession = { configured: localDemo, purchasesEnabled: localDemo };
 
 function canStartQuote() {
-  return currentVerification?.status === "verified" && (localDemo || (buyerSession.authorized && buyerSession.purchasesEnabled));
+  return currentVerification?.status === "verified" && buyerSession.purchasesEnabled;
 }
 
 function updateQuoteAvailability() {
   quoteButton.disabled = !canStartQuote();
 }
 
-function loadScript(source, attributes = {}) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = source;
-    script.crossOrigin = "anonymous";
-    for (const [name, value] of Object.entries(attributes)) script.setAttribute(name, value);
-    script.onload = resolve;
-    script.onerror = () => reject(new Error("Clerk sign-in could not be loaded."));
-    document.head.append(script);
-  });
-}
-
-async function refreshBuyerSession() {
-  if (!clerkInstance?.isSignedIn) {
-    buyerSession = { ...buyerSession, authenticated: false, authorized: false };
-    authState.textContent = "SIGN IN FOR BUYER ACCESS";
-    authButton.hidden = false;
-    clerkUserButton.hidden = true;
-    updateQuoteAvailability();
-    void refreshReceipts();
+async function initializeBuyerSession() {
+  if (localDemo) {
+    sessionState.textContent = "LOCAL TESTNET DEMO";
     return;
   }
   try {
-    const token = await clerkInstance.session.getToken();
-    const response = await fetch("/api/session", { cache: "no-store", headers: { authorization: `Bearer ${token}` } });
+    const response = await fetch("/api/session", { cache: "no-store" });
     const session = await response.json();
+    if (!response.ok || session.guestSession !== true) throw new Error(session.error || "Guest session could not be started.");
     const statusResponse = await fetch("/api/status", { cache: "no-store" });
-    const deployment = statusResponse.ok ? await statusResponse.json() : {};
+    const status = statusResponse.ok ? await statusResponse.json() : {};
     buyerSession = {
       configured: true,
-      authenticated: response.ok,
-      authorized: response.ok && session.authorized === true,
-      purchasesEnabled: response.ok && session.purchasesEnabled === true && deployment.paymentEnabled === true,
+      purchasesEnabled: session.purchasesEnabled === true && status.publicPurchasesEnabled === true && status.paymentEnabled === true,
     };
-    authState.textContent = buyerSession.authorized
-      ? buyerSession.purchasesEnabled ? "AUTHORIZED BUYER" : "BUYER ACCESS · PAYMENTS OFF"
-      : "ACCOUNT NOT AUTHORIZED";
-    authState.title = session.userId ? `Clerk user: ${session.userId}` : "This Clerk account is not on the buyer access list.";
-    authButton.hidden = true;
-    if (clerkUserButton.dataset.mounted !== "true") {
-      clerkInstance.mountUserButton(clerkUserButton);
-      clerkUserButton.dataset.mounted = "true";
-    }
-    clerkUserButton.hidden = false;
+    sessionState.textContent = "PUBLIC GUEST SESSION";
   } catch {
-    buyerSession = { ...buyerSession, authenticated: false, authorized: false };
-    authState.textContent = "SESSION CHECK FAILED";
+    buyerSession = { configured: false, purchasesEnabled: false };
+    sessionState.textContent = "DEMO SESSION UNAVAILABLE";
   }
   updateQuoteAvailability();
-  void refreshReceipts();
-}
-
-async function initializeHostedAuth() {
-  if (localDemo) {
-    authState.textContent = "LOCAL TESTNET DEMO";
-    return;
-  }
-  try {
-    const response = await fetch("/api/auth-config", { cache: "no-store" });
-    const config = await response.json();
-    if (!response.ok || config.enabled !== true || !config.publishableKey) {
-      buyerSession = { configured: false, authenticated: false, authorized: false, purchasesEnabled: false };
-      authState.textContent = "INDIVIDUAL ACCESS NOT CONFIGURED";
-      updateQuoteAvailability();
-      return;
-    }
-    const encodedDomain = config.publishableKey.split("_")[2];
-    const clerkDomain = atob(encodedDomain).replace(/\$$/u, "");
-    const frontend = `https://${clerkDomain}`;
-    await loadScript(`${frontend}/npm/@clerk/ui@1/dist/ui.browser.js`);
-    await loadScript(`${frontend}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, { "data-clerk-publishable-key": config.publishableKey });
-    if (!window.Clerk) throw new Error("Clerk did not initialize.");
-    clerkInstance = window.Clerk;
-    await clerkInstance.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
-    buyerSession.configured = true;
-    buyerSession.purchasesEnabled = config.purchasesEnabled === true;
-    authButton.hidden = false;
-    authButton.textContent = "Sign in";
-    authButton.addEventListener("click", () => clerkInstance?.openSignIn());
-    clerkInstance.addListener(() => { void refreshBuyerSession(); });
-    await refreshBuyerSession();
-  } catch {
-    buyerSession = { configured: false, authenticated: false, authorized: false, purchasesEnabled: false };
-    authState.textContent = "SIGN-IN UNAVAILABLE";
-    updateQuoteAvailability();
-  }
 }
 
 async function requestHeaders(path, initial = {}) {
-  const headers = { ...initial };
-  if (!localDemo && ["/api/quote", "/api/prepare", "/api/approve", "/api/purchase", "/api/receipts", "/api/receipt/acknowledge"].includes(path)) {
-    if (!clerkInstance?.isSignedIn) throw new Error("Sign in with an authorized buyer account to continue.");
-    const token = await clerkInstance.session.getToken();
-    if (!token) throw new Error("Your buyer session expired. Sign in again to continue.");
-    headers.authorization = `Bearer ${token}`;
-  }
-  return headers;
+  return { ...initial };
 }
-
 async function api(path, body) {
   const headers = await requestHeaders(path, { "content-type": "application/json", "x-countercheck-request": "1" });
   const response = await fetch(path, {
@@ -227,8 +151,13 @@ loadDemoSellerButton.addEventListener("click", async () => {
   loadDemoSellerButton.disabled = true;
   try {
     const response = await fetch("/api/demo-seller", { cache: "no-store", headers: { "x-countercheck-request": "1" } });
-    if (!response.ok) throw new Error("The local demo seller is not configured.");
     const profile = await response.json();
+    if (!response.ok) {
+      const reason = profile.error === "demo_seller_not_configured"
+        ? "No demo seller badge is configured in the buyer API. Configure SELLER_BADGE there and restart the service."
+        : profile.error || `Seller configuration request failed (${response.status}).`;
+      throw new Error(reason);
+    }
     badgeInput.value = profile.badge;
     verifyButton.click();
   } catch (error) {
@@ -521,7 +450,7 @@ async function refreshReceipts() {
       row.append(status, detail, link); container.append(row);
     }
   } catch {
-    $("#receipt-count").textContent = localDemo ? "Unavailable" : "Sign in to see your receipts";
+    $("#receipt-count").textContent = localDemo ? "Unavailable" : "Guest session unavailable";
   }
 }
 
@@ -534,11 +463,9 @@ async function loadStatus() {
     const status = await response.json();
     const tag = $("#payment-mode");
     if (!localDemo) {
-      tag.textContent = !status.individualAuthorizationEnabled
-        ? "INDIVIDUAL ACCESS NOT CONFIGURED"
-        : status.paymentEnabled && status.publicPurchasesEnabled
-          ? "AUTHORIZED TESTNET PURCHASES"
-          : "TESTNET PAYMENTS LOCKED";
+      tag.textContent = status.paymentEnabled && status.publicPurchasesEnabled
+        ? "PUBLIC TESTNET PURCHASES ON"
+        : "TESTNET PAYMENTS LOCKED";
       return;
     }
     tag.textContent = status.paymentEnabled
@@ -549,6 +476,7 @@ async function loadStatus() {
   }
 }
 
-void initializeHostedAuth();
-void loadStatus();
-void refreshReceipts();
+void (async () => {
+  await initializeBuyerSession();
+  await Promise.all([loadStatus(), refreshReceipts()]);
+})();

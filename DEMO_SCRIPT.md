@@ -1,6 +1,6 @@
 # Countercheck screen recording script
 
-This guide gives the exact screen actions and narration for a full product walkthrough, followed by a three-minute edit plan. Use the local app for the complete flow. The hosted Vercel app is read-only for purchases; its payment gate must remain off.
+This guide gives the exact screen actions and narration for a full product walkthrough, followed by a three-minute edit plan. Use the local app for the complete payment flow. The hosted Vercel app uses anonymous guest sessions and should remain read-only for the recording unless public Testnet payments are deliberately enabled.
 
 ## Before recording
 
@@ -14,7 +14,7 @@ This guide gives the exact screen actions and narration for a full product walkt
 
 2. Open `http://127.0.0.1:4173` in a clean browser window. Set zoom to 100%, record at 1920x1080 and 30 fps, hide bookmarks and unrelated tabs, and keep the pointer visible.
 3. Confirm the header says **TESTNET SETTLEMENT ON**. Confirm the seller is configured by clicking **Load demo seller** before the take if needed; this fills the badge from the local app configuration and starts its Registry check. Do not show `.env`, terminal environment values, service logs, private keys, recovery phrases, or wallet exports.
-4. The hosted app requires a Clerk account on the buyer allowlist and enabled Testnet gates. Those Clerk dashboard settings must be provisioned before recording a hosted purchase. Use the local loopback app for the complete UI path; it retains the separately configured Testnet payment action.
+4. The hosted app can load the configured seller badge without a sign-in. Confirm it says **TESTNET PAYMENTS LOCKED** for a read-only hosted preview. Use the local loopback app for the full payment path; its separately configured Testnet action is unchanged.
 5. A new final-button click submits one 1 CCD Testnet payment. It must be your intentional approval of a new payment for this recording. Click it only once. Never splice a previous transaction into a new click as though it came from that session.
 
 ## Full walkthrough — about four minutes
@@ -111,7 +111,7 @@ If you show the existing 19 November transaction instead of making a new payment
 
 **Say**
 
-> This is a single-operator Testnet prototype. The hosted buyer keeps purchase requests blocked because individual user authorization is not implemented. The local receipt is hash-linked, not externally immutable, and a Registry badge does not guarantee seller behavior.
+> This is a single-operator Testnet prototype. The hosted purchase gate stays off for this recording; its guest session scopes browser state but does not identify a buyer. The local receipt is hash-linked, not externally immutable, and a Registry badge does not guarantee seller behavior.
 
 ## Three-minute cut
 
@@ -126,7 +126,7 @@ Keep these shots in order. Trim pauses, not the approval or settlement distincti
 | 01:22–01:55 | Click **Prepare unsigned transaction review**, point to digest, click **Approve this exact transaction**. | Exact transaction is displayed; approval is digest-bound and checks are fresh. |
 | 01:55–02:35 | Click **Sign, pay 1 CCD, and get resource** once, if authorizing a new Testnet payment; show settlement and paid response. | The person makes the separate authorization; facilitator finalizes before fulfillment. |
 | 02:35–02:52 | Show receipt and transaction hash; open Testnet explorer if you inspect it during capture. | Local evidence plus the transaction reference. |
-| 02:52–03:00 | Show Testnet header and state the access boundary. | Hosted purchases require a signed-in allowlisted Clerk user and a separate approval for the exact transaction. |
+| 02:52–03:00 | Show Testnet header and state the access boundary. | Hosted guest sessions scope browser state but do not identify buyers. Keep public purchases locked unless anonymous access to the shared Testnet buyer is intended. |
 
 If settlement takes longer, keep a moment of the real progress state and edit only after the result is known. Identify any previously recorded transaction as historical. Do not splice it as if it followed the current click.
 
@@ -146,4 +146,4 @@ After recording, stop the local services:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\stop-testnet-demo.ps1
 ```
 
-Review the recording for secrets and personal data before sharing it. Do not claim production readiness, multi-user authorization, market validation, or seller quality.
+Review the recording for secrets and personal data before sharing it. Do not claim production readiness, buyer identity authentication, market validation, or seller quality.

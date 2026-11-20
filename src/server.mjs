@@ -18,7 +18,7 @@ function buyerOwner(request, response) {
   if (!config.remoteDeployment) return { ok: true, ownerId: undefined };
   const ownerId = request.headers["x-countercheck-user-id"];
   if (typeof ownerId !== "string" || !/^user_[A-Za-z0-9_-]{4,}:sess_[A-Za-z0-9_-]{4,}$/u.test(ownerId)) {
-    sendJson(response, 401, { error: "individual_authorization_required" });
+    sendJson(response, 401, { error: "buyer_session_required" });
     return { ok: false };
   }
   return { ok: true, ownerId };
@@ -102,7 +102,7 @@ const server = createServer(async (request, response) => {
       note: "Configuration status only. This is not a live network-health check.",
     });
   }
-  if (request.method === "GET" && url.pathname === "/api/demo-seller" && !config.remoteDeployment) {
+  if (request.method === "GET" && url.pathname === "/api/demo-seller") {
     if (!config.sellerBadge) return sendJson(response, 404, { error: "demo_seller_not_configured" });
     return sendJson(response, 200, { badge: config.sellerBadge });
   }
