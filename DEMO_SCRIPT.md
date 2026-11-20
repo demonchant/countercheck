@@ -1,122 +1,149 @@
-# Countercheck screen-recording script
+# Countercheck screen recording script
 
-This is the capture plan for the finished build. It includes a full work demo and an edit plan for the event's three-minute video limit. All on-screen claims stay tied to behavior the demo actually shows.
+This guide gives the exact screen actions and narration for a full product walkthrough, followed by a three-minute edit plan. Use the local app for the complete flow. The hosted Vercel app is read-only for purchases; its payment gate must remain off.
 
 ## Before recording
 
-1. Confirm `.env` is configured privately, Node.js 20+ and dependencies are installed, and the Testnet buyer and sponsor have enough test CCD. The buyer spends exactly 1 CCD; the sponsor separately pays the fee shown in the review.
-2. Start the full local workflow:
+1. Start the local Testnet demo only when you are ready to record:
 
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\start-testnet-demo.ps1 -EnableTestnetSettlement
    ```
 
-   The launcher confirms a live Registry/quote and unsigned transaction review. Startup does not sign or pay; the separate final UI action does.
-3. Open `http://127.0.0.1:4173` in a clean browser window. Hide bookmarks and unrelated tabs. Set the browser to 100% zoom and record at 1920×1080, 30 fps, with the pointer visible. Turn on cursor emphasis; keep the microphone close and levels below clipping.
-4. Check that the payment tag says **TESTNET SETTLEMENT ON**, the workflow steps are readable, and there is no private key, seed phrase, `.env`, terminal environment dump, service log, account export, or unrelated personal data on screen.
-   This is a one-operator, loopback demo. The separate approval is a human authorization for this exact transaction; it is not per-user login or a multi-user identity system. Do not imply that public buyer authorization is ready.
-5. Click **Show a blocked check** for the negative case. It puts the deliberate placeholder `demo-invalid-seller` in the seller field; the API compares it with the locally configured `SELLER_BADGE` and returns `seller-mismatch`. It does not call the chain or spend anything. Then click **Load demo seller**: the local app reads `SELLER_BADGE` from its configuration, fills the field, and starts the real Registry check. No badge needs to be typed into the UI for this path.
-   If **Load demo seller** reports that the seller is not configured, stop and set `SELLER_BADGE` plus the matching seller payee/resource settings in the local `.env`, restart the demo, then run the checks again. Do not put private keys or tokens in the seller field or the recording.
-6. A successful recording requires one fresh Testnet transfer. The final button sends exactly 1 CCD after the digest review and approval. Do not click it twice. Do not describe a previously recorded receipt as a payment made during the recording.
-7. Optional feature tour: while the full demo services are running, use `node demo/read-only-agent-tour.mjs` and `node demo/read-only-mcp-tour.mjs`. Both are read-only. `npm run agent` additionally requires a local Ollama service and configured model; skip that part if it is unavailable.
+   Startup runs checks and prepares the flow; it does not submit a transaction.
 
-## Full product demo — about 5½ minutes including read-only appendix
+2. Open `http://127.0.0.1:4173` in a clean browser window. Set zoom to 100%, record at 1920x1080 and 30 fps, hide bookmarks and unrelated tabs, and keep the pointer visible.
+3. Confirm the header says **TESTNET SETTLEMENT ON**. Confirm the seller is configured by clicking **Load demo seller** before the take if needed; this fills the badge from the local app configuration and starts its Registry check. Do not show `.env`, terminal environment values, service logs, private keys, recovery phrases, or wallet exports.
+4. The public app at `https://countercheck-six.vercel.app/` is useful as an opening shot, but it cannot show the complete transaction flow. The public API returns `403 individual_authorization_required` for purchase requests. Use the local loopback app for the complete UI path.
+5. A new final-button click submits one 1 CCD Testnet payment. It must be your intentional approval of a new payment for this recording. Click it only once. Never splice a previous transaction into a new click as though it came from that session.
 
-### 00:00–00:22 — State the user problem
+## Full walkthrough — about four minutes
 
-**Screen:** Hero, then scroll to the workflow. Keep the Testnet label visible.
+### 00:00–00:25 — Set the scene
 
-**Voice:** “An agent can pay an API and still leave the buyer unsure which registered seller received the money, whether the terms matched the request, and what came back. Countercheck puts a buyer-side check in front of that payment. The badge is an accountability link; it is not an endorsement.”
+**Screen actions**
 
-### 00:22–00:45 — Show a real blocked path
+1. Show the app header with **Concordium / Testnet** and the payment-mode tag.
+2. Keep the hero title **Before an agent pays, check the other side** visible.
 
-**Screen:** Click **Show a blocked check**. Show the deliberate placeholder in the field and the red `seller-mismatch` result.
+**Say**
 
-**Voice:** “First, the blocked case. This badge does not match the seller selected in the local purchase policy, so the app stops here. No quote is available and no payment has been prepared.”
+> A buyer agent can receive a valid payment request from a new seller and still need to know whether that request belongs to the seller it intended to pay. Countercheck puts the seller's registered identity and the exact payment terms in front of the transfer.
 
-### 00:45–01:20 — Check the registered seller
+### 00:25–00:55 — Show the blocked seller
 
-**Screen:** Click **Load demo seller**. The configured `SELLER_BADGE` fills the field automatically. Wait for the green verified result and check time; point to the Registry/card and wallet evidence.
+**Screen actions**
 
-**Voice:** “Now I load the configured demo seller. Countercheck reads the live Concordium Testnet Registry, checks the active badge and Agent Card hash, and compares the seller's registered wallet with the intended payee. This checks registration and integrity. It says nothing about the seller's honesty or service quality.”
+1. Scroll to **Check the counterparty**.
+2. Click **Show a blocked check**.
+3. Show `demo-invalid-seller` in the badge field and wait for the **seller-mismatch** result.
+4. Point to the blocked state. Do not click the quote button.
 
-### 01:20–01:52 — Inspect the live x402 request
+**Say**
 
-**Screen:** Click **Check the live request**. Hold on the quote grid: network, CCD asset, amount, recipient, sponsor, expiry, and spend ceiling.
+> First, I show the negative case. This badge does not match the seller bound to the local buyer policy. Countercheck blocks the flow before a quote, review, or payment.
 
-**Voice:** “The buyer now reads the seller's live x402 request. The policy accepts only the configured Concordium Testnet, native CCD, the registered seller wallet, the configured fee sponsor, a short expiry, and no more than one CCD. A changed or unsupported term blocks the quote.”
+This deliberate check uses a placeholder badge. It does not call the chain or spend funds.
 
-### 01:52–02:42 — Review and approve the exact transaction
+### 00:55–01:30 — Verify the configured seller
 
-**Screen:** Click **Prepare unsigned transaction review**. Scroll only enough to show sender, recipient, 1 CCD, fee payer, nonce, expiry, available balances, signer match, and digest. Click **Approve this exact transaction** and show fresh recheck progress.
+**Screen actions**
 
-**Voice:** “Before any signature, the app reads the current account nonce, buyer and sponsor balances, and chain parameters. It displays the exact transfer and its digest. Approval is tied to that digest, and the service repeats the identity, quote, and chain checks. If anything changed, it asks for a fresh review.”
+1. Click **Load demo seller**.
+2. Show the configured seller badge filling the field automatically.
+3. Wait for **Verified for this check** and point to the checked time, registered wallet, and **Open Registry response** link if shown.
 
-### 02:42–03:28 — Settle, fulfill, and retain proof
+**Say**
 
-**Screen:** Click **Sign, pay 1 CCD, and get resource** once. Keep the settlement message visible. Then show the paid JSON response, receipt row, transaction hash, and explorer link.
+> Now I load the demo seller configured for this buyer. Countercheck checks the live Testnet Registry, compares the Agent Card hash, and matches the registered wallet to the intended payment recipient. A badge is an identity signal; it is not an endorsement or a service-quality guarantee.
 
-**Voice:** “I separately authorize the displayed one CCD Testnet transfer. The buyer signs only the reviewed digest. The authenticated facilitator checks the payment, protects against replay, sponsors the network fee, and waits for finalization. It rereads the finalized transaction details before the seller returns this paid resource. Countercheck records the result locally and links the transaction for an explorer check.”
+The **Check seller** button can also run this check after a badge is entered manually. The demo-seller button saves typing and uses the configured seller.
 
-### 03:28–03:55 — Bound the claim
+### 01:30–02:00 — Check the live payment request
 
-**Screen:** Open the transaction link in a new tab, select Testnet if asked, and search the displayed hash. If the explorer does not load, leave the app receipt visible and state that the facilitator's finalized-block read succeeded but the explorer could not be checked in the capture.
+**Screen actions**
 
-**Voice:** “This is one successful Testnet run, not a production claim. The local receipt is hash-linked but not externally anchored. A Registry badge does not guarantee behavior, and this prototype still needs buyer research and production hardening.”
+1. Click **Check the live request**.
+2. Wait for the quote panel.
+3. Point to **Network**, **Asset**, **Amount**, **Recipient**, **Network fee**, **Quote expires**, and **Spend ceiling**.
+4. Show that the quote is 1 CCD or less and the fee sponsor is displayed.
 
-### 03:55–04:12 — Show the local access boundary
+**Say**
 
-**Screen:** Return to the app header and keep the loopback URL and Testnet label visible. Do not expose configuration or terminal secrets.
+> The buyer now fetches the seller's live x402 request. Countercheck checks the Testnet, native CCD asset, seller recipient, sponsor, expiry, and the buyer's one-CCD ceiling. This is a quote check; it does not authorize a payment.
 
-**Voice:** “This recording runs locally with one configured buyer and a separate explicit approval for the displayed digest. That approval protects this payment action; individual user login and multi-user authorization are not implemented, so the buyer API is not exposed publicly.”
+### 02:00–02:45 — Review and approve the exact transaction
 
-## Optional feature appendix — about 60–90 seconds
+**Screen actions**
 
-Record this as a separate appendix for work reviewers; keep it outside the three-minute event cut.
+1. Click **Prepare unsigned transaction review**.
+2. Scroll through the review and pause on the buyer sender, seller recipient, payment amount, sponsor, nonce, expiry, fee estimate, available balances, signer check, and **Signing digest**.
+3. Point to **Exact unsigned transaction payload**.
+4. Click **Approve this exact transaction**.
+5. Wait for the fresh-check/approval result. Keep the separate payment button visible.
 
-### Read-only A2A agent discovery
+**Say**
 
-**Screen:** From the project terminal, run:
+> Countercheck prepares the exact transaction and shows what will be signed. Approval is tied to this digest. The service rechecks identity, quote, and chain details before recording approval. If the details change, the review must be prepared again.
+
+### 02:45–03:25 — Submit, confirm, and show the receipt
+
+**Screen actions**
+
+1. Read the button label **Sign, pay 1 CCD, and get resource** aloud.
+2. Click it once only if you intend to make this new Testnet payment.
+3. Keep the settlement progress on screen; do not refresh or click again.
+4. When complete, show **Paid resource delivered**, the transaction hash, amount, local receipt ID, and seller response.
+5. Click **View finalized transaction on Testnet explorer**. Confirm the explorer is set to Testnet and inspect the transaction before describing it as independently checked.
+
+**Say**
+
+> I am authorizing the displayed one-CCD Testnet transfer. The buyer signs the reviewed digest. The facilitator sponsors the network fee, waits for finalization, and reads the finalized payment details before the seller returns the paid resource. Countercheck keeps a local hash-linked receipt for this result.
+
+If you show the existing 19 November transaction instead of making a new payment, label it **previous recorded Testnet run** and do not present it as the result of a button click in this recording. The original capture did not include an independent explorer inspection.
+
+### 03:25–03:45 — State the limits
+
+**Screen actions**
+
+1. Return to the app header and show **Concordium / Testnet**.
+2. Keep the receipt visible or return to the main workflow.
+
+**Say**
+
+> This is a single-operator Testnet prototype. The hosted buyer keeps purchase requests blocked because individual user authorization is not implemented. The local receipt is hash-linked, not externally immutable, and a Registry badge does not guarantee seller behavior.
+
+## Three-minute cut
+
+Keep these shots in order. Trim pauses, not the approval or settlement distinction.
+
+| Video time | Exact action | Narration point |
+|---|---|---|
+| 00:00–00:18 | Show the hero and Testnet header. | A structured payment request still needs a buyer-side seller and policy check. |
+| 00:18–00:38 | Click **Show a blocked check**; hold on `seller-mismatch`. | Wrong configured seller; the flow stops before a quote or payment. |
+| 00:38–01:00 | Click **Load demo seller**; hold on verified status and wallet. | Registry badge, Agent Card hash, and registered wallet check. |
+| 01:00–01:22 | Click **Check the live request**; show quote fields. | Testnet, CCD, amount, recipient, sponsor, expiry, and one-CCD ceiling. |
+| 01:22–01:55 | Click **Prepare unsigned transaction review**, point to digest, click **Approve this exact transaction**. | Exact transaction is displayed; approval is digest-bound and checks are fresh. |
+| 01:55–02:35 | Click **Sign, pay 1 CCD, and get resource** once, if authorizing a new Testnet payment; show settlement and paid response. | The person makes the separate authorization; facilitator finalizes before fulfillment. |
+| 02:35–02:52 | Show receipt and transaction hash; open Testnet explorer if you inspect it during capture. | Local evidence plus the transaction reference. |
+| 02:52–03:00 | Show Testnet header and state public-payment boundary. | One configured Testnet flow; hosted purchase remains blocked pending individual authorization. |
+
+If settlement takes longer, keep a moment of the real progress state and edit only after the result is known. Identify any previously recorded transaction as historical. Do not splice it as if it followed the current click.
+
+## Optional read-only appendix
+
+Record A2A/MCP as a separate appendix; it is not needed for the three-minute cut.
+
+1. Run `node .\demo\read-only-agent-tour.mjs` to show the buyer and seller read-only A2A actions.
+2. Run `node .\demo\read-only-mcp-tour.mjs` to show the two read-only MCP tools.
+3. Only show the optional Ollama assistant if it is already configured and running. It can request verification and quote checks; it cannot approve, sign, or pay.
+
+## Stop the demo
+
+After recording, stop the local services:
 
 ```powershell
-node .\demo\read-only-agent-tour.mjs
+powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\stop-testnet-demo.ps1
 ```
 
-**Voice:** “The buyer and seller also expose read-only A2A actions. The buyer agent can verify counterparties and request a quote; the seller agent reports its x402 offer and whether paid fulfillment is available. These calls cannot approve or pay.”
-
-### MCP and optional local assistant
-
-**Screen:** Run `node .\demo\read-only-mcp-tour.mjs`. If Ollama is already running and configured, run `npm run agent`, enter `/verify`, then `/quote`, and exit. Do not show the terminal environment or configuration.
-
-**Voice:** “The same bounded checks are available over MCP. The optional Ollama assistant can call only the read-only verification and quote tools. Deterministic checks remain authoritative; the assistant cannot approve, sign, or pay.”
-
-The MCP/agent tour is a distinct read-only capability capture. It is not part of the 19 November payment evidence and no model-quality claim is made.
-
-### Local receipt boundary
-
-Point to the receipt list and say: “Records are chained locally so edits can be detected. They are not a public ledger or an immutable audit service.”
-
-## Three-minute hackathon edit
-
-The event announcement caps the demo video at three minutes. Use these exact spans from the work demo; cut the optional A2A/MCP appendix and long pauses. Keep one sentence on the real problem, one visible blocked result, one live verification, the full exact-transaction review and distinct payment click, and the actual receipt/hash.
-
-| Edit time | Shot / action | Keep this voiceover point |
-|---|---|---|
-| 00:00–00:18 | Hero and Testnet status | Payment alone does not tell the buyer whether the intended registered seller received it. |
-| 00:18–00:33 | Click **Show a blocked check**; show `demo-invalid-seller` and `seller-mismatch` | Deliberate wrong-seller case; stops before quote/payment and spends nothing. |
-| 00:33–00:58 | Click **Load demo seller**; show configured badge fill and verified state | Loads `SELLER_BADGE` from local config; live Registry/card/wallet checks; badge is not an endorsement. |
-| 00:58–01:21 | Open live quote | Exact Testnet/native-CCD/payee/sponsor/expiry policy; one CCD maximum. |
-| 01:21–01:55 | Prepare review; hold on digest and parties; approve | Current nonce/balances; exact digest; fresh recheck and separate approval. |
-| 01:55–02:25 | Click pay once; show settlement and paid response | Digest-bound buyer signing; sponsored fee; finalized payment before fulfillment. |
-| 02:25–02:48 | Receipt, hash, explorer page | Local evidence trail plus visible Testnet transaction reference. |
-| 02:48–03:00 | Return to app / limits panel | One observed Testnet run; no production, demand, or quality guarantee. |
-
-If settlement takes longer than the edit allows, keep the real progress screen for a few seconds, then cut to the receipt from that same run. Add an on-screen label **“same Testnet run”**; do not splice in a historical receipt as if it came from the current click. Keep the transaction hash readable for at least three seconds.
-
-## Exact phrases to preserve
-
-- Say **Testnet**, **one observed run**, and **local receipt**.
-- Say **facilitator-confirmed finalization** unless you personally inspect the explorer or an independent node during capture.
-- Say **single-operator local demo**; do not describe digest approval as individual account authentication.
-- Do not say the badge proves safe behavior, the product guarantees a successful service, the local record is immutable, the project is production-ready, or buyers have validated demand.
-- Do not show the private configuration file or terminal output that could contain secrets.
+Review the recording for secrets and personal data before sharing it. Do not claim production readiness, multi-user authorization, market validation, or seller quality.

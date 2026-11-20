@@ -1,69 +1,78 @@
 # Countercheck
 
-**Before an agent pays, check the other side.** Countercheck is a buyer-side control for agent commerce. It checks that a seller badge is active, that the seller's current Agent Card matches the registered hash and wallet, and that a live x402 payment request fits the buyer's configured rules. It then shows the exact sponsored Concordium transaction for human approval.
+**Before an agent pays, check the other side.** Countercheck is a buyer-side guardrail for agent commerce on Concordium Testnet.
 
-The problem is specific: payment settlement can move value without showing that the buyer paid the intended registered agent or received the expected service response. That creates a gap between “the payment settled” and “the buyer can explain why this agent was paid.” The gap is a credible product hypothesis supported by ecosystem proposals; prevalence, buyer demand, and willingness to adopt remain unvalidated. A badge gives an accountability link, not an endorsement or a service-quality guarantee.
+## A buyer agent meets a new seller
 
-## What the build does
+Imagine a buyer agent searching for a data service. It finds a seller that can answer the question, and the seller returns an x402 request: pay 1 CCD to this address, on Concordium Testnet, before the quote expires. The request is machine-readable and ready to settle. But the buyer still has to decide: **is this the seller I intended to pay, and do these exact terms fit my policy?**
 
-- **Verifies the counterparty:** reads the Concordium Testnet Registry, checks active status and Agent Card hash, and matches the registered payment wallet.
-- **Checks the request:** fetches the seller's live x402 v2 challenge and rejects the wrong scheme, network, asset, payee, sponsor, expiry, or amount. The current demo is native CCD with a hard 1 CCD buyer cap.
-- **Prepares and reviews:** reads current Testnet nonce, balances, chain parameters, and signer key match; displays sender, seller, sponsor, fee, expiry, payload, and signing digest.
-- **Separates approval from payment:** fresh checks run before digest approval and again before signing. The buyer key is invoked only for the reviewed digest. A separate button submits through the authenticated local facilitator.
-- **Settles and fulfills:** the facilitator applies replay protection, reserves sponsor balance, submits the sponsored transfer, waits for finalization, and performs a second Testnet gRPC read to match sender, recipient, amount, and asset. The seller returns its paid resource only after successful settlement.
-- **Keeps a local evidence trail:** successful payments create hash-linked local records with a transaction hash and CCDScan link. The local log is tamper-evident, not immutable or externally anchored.
-- **Exposes read-only agent interfaces:** buyer and seller A2A endpoints, plus MCP tools for counterpart checks and quotes. An optional local Ollama assistant can call only those two read-only MCP tools; AI cannot approve, sign, or pay.
+A payment protocol can describe and settle the request. A registry can publish an agent's identity and card. Those are useful parts of the system, but the buyer needs them connected to this particular payment. A badge alone is not an endorsement, and a successful transfer alone does not explain why this seller was paid.
 
-## Run the demo
+Countercheck puts that buyer-side check in front of the transfer. It checks the seller's Concordium badge, registered Agent Card hash, and payment wallet. It then fetches the live x402 request and checks the network, asset, amount, recipient, fee sponsor, expiry, and spend cap. A mismatch stops the flow before signing. If the checks pass, Countercheck prepares the exact transaction so a person can review and approve it.
 
-Install the pinned dependencies with Node.js 20 or newer, create a private `.env` from `.env.example`, and configure the buyer, seller, and sponsor accounts, registered badges, local API token, seller resource, and 1 CCD spend ceiling. Keep the buyer and sponsor keys separate. The buyer account needs the supported 1-of-1 signer used by this prototype, and the sponsor needs enough Testnet CCD for the currently estimated network fee and configured reserve.
+This is a focused product hypothesis, not a claim that x402 or agent registries are broken. The need and demand still require validation with real agent buyers.
 
-Start the review-only demo with `.\demo\start-safe-demo.ps1`. It blanks signing keys and tokens, runs the seller challenge-only, and cannot fulfill paid requests.
+## What happens in a Countercheck purchase
 
-For the full, loopback-only Testnet workflow, run:
+1. **Check the seller.** Read the Concordium Testnet Registry for an active badge, matching Agent Card hash, and registered payment wallet. The configured buyer flow rejects a different seller badge.
+2. **Check the quote.** Read the seller's live x402 v2 challenge. The demo accepts only the configured Concordium Testnet, native CCD, matching seller recipient, configured fee sponsor, an unexpired request, and at most 1 CCD.
+3. **Review the exact transaction.** Read the current nonce and balances, prepare the sponsored transaction, and display its sender, recipient, amount, fee, expiry, payload, and signing digest.
+4. **Approve one digest.** A person approves the exact review. Countercheck repeats the identity, quote, and chain checks before signing; changed details require a fresh review.
+5. **Confirm settlement and fulfillment.** In the local Testnet demo, the facilitator submits the transfer, waits for finalization, and checks the finalized transaction details before the seller returns its paid resource. Countercheck records a local hash-linked receipt.
+
+The optional local AI assistant can request read-only identity and quote checks. Deterministic policy code makes the decisions; the assistant cannot approve, sign, or pay.
+
+## Hosted demo
+
+- Buyer app: [countercheck-six.vercel.app](https://countercheck-six.vercel.app/)
+- Buyer API status: [countercheck-six.vercel.app/api/status](https://countercheck-six.vercel.app/api/status)
+- Buyer API health: [countercheck-1-lecq.onrender.com/healthz](https://countercheck-1-lecq.onrender.com/healthz)
+- Seller x402 challenge: [countercheck-seller-1146.onrender.com/resource](https://countercheck-seller-1146.onrender.com/resource)
+
+The seller resource returns HTTP 402 with an x402 challenge; this is the expected response before payment. The hosted buyer app and API are read-only: public `POST /api/purchase` is blocked with `403 individual_authorization_required`, and buyer payments plus facilitator settlement remain disabled. Use the local Testnet setup below for the complete review, approval, and settlement flow.
+
+## Run the local Testnet demo
+
+Requirements: Node.js 20 or newer, dependencies from the lockfile, and a private `.env` configured from `.env.example`. Configure the separate Testnet buyer and sponsor accounts, registered buyer and seller badges, seller recipient, local API token, and the 1 CCD spend ceiling. Never put private keys or API tokens in the repository or a recording.
+
+Start the review-only demo:
+
+```powershell
+.\demo\start-safe-demo.ps1
+```
+
+For the full local Testnet flow, start the explicit settlement mode:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\start-testnet-demo.ps1 -EnableTestnetSettlement
 ```
 
-Open `http://127.0.0.1:4173`. The launcher confirms that the buyer, seller, and facilitator report the fixed Concordium Testnet and the paid workflow is configured. It does not sign or send a transaction by itself. The final **Sign, pay 1 CCD, and get resource** action signs and broadcasts one 1 CCD Testnet payment. Stop the services with:
+Open `http://127.0.0.1:4173`. Startup does not send a transaction. The **Sign, pay 1 CCD, and get resource** button is the separate payment action. Stop the services with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\stop-testnet-demo.ps1
 ```
 
-Never expose `.env`, private keys, API tokens, log files, or recovery phrases in a recording or repository. Do not reuse the configured demo keys outside Testnet.
+## Recorded Testnet evidence
 
-## Verified end-to-end run
+One local end-to-end Testnet run was completed on 19 November 2026. It blocked a mismatched seller, verified the configured seller, accepted the 1 CCD quote, prepared and approved the exact transaction digest, settled the transfer, confirmed finality and payment details with a second gRPC read, and received the seller's paid resource. The transaction is available in [CCDScan Testnet](https://testnet.ccdscan.io/?d=transaction&dsh=71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147). The explorer was not independently inspected during the capture. Sanitized evidence is in [`evidence/live-e2e-2026-11-19.json`](evidence/live-e2e-2026-11-19.json).
 
-On 19 November 2026, the live workflow rejected a mismatched seller badge, verified the configured seller, accepted the live 1 CCD x402 quote, prepared the exact sponsored transaction, recorded digest-bound approval, and completed a finalized Testnet payment. The seller returned `paid: true` only after settlement. Transaction: [`71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147`](https://testnet.ccdscan.io/?d=transaction&dsh=71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147). The facilitator's second gRPC read matched the finalized payment details. We did not independently inspect the explorer page in the captured run; the receipt records that limit. Sanitized evidence is in [`evidence/live-e2e-2026-11-19.json`](evidence/live-e2e-2026-11-19.json).
+This proves the configured flow worked once. It does not establish production readiness, general reliability, buyer demand, or a public payment deployment.
 
-For the full screen-recording plan and the shorter three-minute hackathon cut, see [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) and [`DEMO_CHECKLIST.md`](DEMO_CHECKLIST.md).
+## Boundaries
 
-## Boundaries and current evidence
+- Concordium Testnet only; one configured buyer, seller, and sponsor; native CCD; a 1 CCD cap.
+- The local demo requires a human approval tied to the exact transaction digest. This is per-payment approval, not user login or multi-user authorization.
+- Public purchase requests are blocked; hosted buyer payments and facilitator settlement stay disabled.
+- The local receipt is hash-linked but can be rewritten by a privileged filesystem actor. It is not externally anchored or immutable.
+- Registry checks confirm registered identity and card/wallet consistency. They do not guarantee seller behavior, current wallet control, service quality, or legal compliance.
+- No direct buyer interviews, pilot, adoption data, or willingness-to-pay validation are claimed.
 
-- Concordium Testnet only. A separate mainnet launch is not implemented or authorized.
-- Fixed 1 CCD native transfer, one configured buyer, seller, and fee sponsor. The facilitator sponsor pays the network fee; the buyer pays the service amount.
-- Buyer signer support is limited to an account and first credential with a 1-of-1 threshold and the configured first key. Other threshold configurations need additional signer support.
-- Each purchase requires a separate human approval tied to the exact transaction digest. This is per-payment authorization, not individual user login or multi-user account separation; the local service uses one configured buyer key.
-- The Vercel proxy hard-blocks public purchase requests until per-user authorization exists. The local loopback Testnet demo still supports the separate review, approval, and payment action.
-- Local service and receipt storage are for a controlled demo, not a multi-tenant production deployment. No public service has been deployed or independently security-reviewed.
-- Registry identity checks do not establish behavior, honesty, quality, legal compliance, or control of a wallet beyond the registered record.
-- No direct buyer interviews, adoption data, or market-size validation are claimed. Hackathon eligibility details and exact portal fields remain partly unknown; see the [event analysis](docs/hackathon-analysis.md) and [rubric map](docs/rubric-matrix.md).
+## Project guides
 
-## Checkpoint handoff — 22 November
-
-The official announcement calls for a project, team, and idea checkpoint on 22 November 2026. This workspace contains the project description and proof plan, but it does not establish an Encode portal entry, team record, or checkpoint confirmation. Before the checkpoint, confirm whether the programme strictly requires an agent already in use, complete the official portal fields, and retain its confirmation. The linked Encode terms were not readable during review.
-
-The project owner supplied the [buyer web app](https://countercheck-red.vercel.app/) and [seller service](https://countercheck-seller-1146.onrender.com) URLs. Their current deployments have not been independently verified from this workspace. See the [Vercel and Render configuration](docs/vercel-configuration.md) and [environment-ready handoff](docs/live-testnet-readiness.md) for remaining prerequisites and the exact observed Testnet boundary.
-
-The copy-ready [checkpoint brief](docs/checkpoint-brief.md) contains the project/idea draft and leaves participant details and portal confirmation explicit.
-
-## Project notes
-
-- [Event analysis and candidate selection](docs/hackathon-analysis.md), [official rubric map](docs/rubric-matrix.md)
-- [Problem and competitor research](docs/competitive-analysis.md), [ecosystem research](docs/ecosystem-research.md), [assumptions and limits](docs/assumptions.md)
-- [Product architecture](docs/architecture.md), [proposal and mechanism](docs/proposal-or-mechanism.md), [dependency audit](docs/dependency-audit.md)
-- [Live Testnet readiness](docs/live-testnet-readiness.md), [dated demo handoff](docs/live-demo-readiness-2026-11-19.md), [evidence index](evidence/README.md)
-- [Deployment and security boundaries](docs/deployment.md), [Vercel and Render configuration](docs/vercel-configuration.md), [remote deployment status](docs/remote-deployment-readiness.md), [facilitator contract](docs/facilitator.md)
-- [Demo and pitch](docs/demo-and-pitch.md), [specialist reviews](docs/specialist-reviews-2026-11-19.md), [workspace forensics](docs/PROJECT_FORENSICS.md)
+- [Architecture](docs/architecture.md)
+- [Local deployment and operations](docs/deployment.md)
+- [Vercel and Render configuration](docs/vercel-configuration.md)
+- [Facilitator contract](docs/facilitator.md)
+- [Click-by-click demo script](DEMO_SCRIPT.md) and [recording checklist](DEMO_CHECKLIST.md)
+- [Evidence index](evidence/README.md)

@@ -20,3 +20,21 @@ Thumbs.db
 .vercel
 .env*
 !.env.example
+
+# Local hackathon/build research; keep these out of the public product repo.
+docs/PROJECT_FORENSICS.md
+docs/agent-card-integrity.md
+docs/agent-card-service-audit.md
+docs/assumptions.md
+docs/checkpoint-brief.md
+docs/competitive-analysis.md
+docs/demo-and-pitch.md
+docs/dependency-audit.md
+docs/ecosystem-research.md
+docs/hackathon-analysis.md
+docs/live-demo-readiness-2026-11-19.md
+docs/live-testnet-readiness.md
+docs/proposal-or-mechanism.md
+docs/remote-deployment-readiness.md
+docs/rubric-matrix.md
+docs/specialist-reviews-2026-11-19.md
