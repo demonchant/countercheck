@@ -1,26 +1,46 @@
-# Vercel and Render configuration
+# Vercel, Clerk, and Render configuration
 
-The project owner supplied these public URLs:
+The hosted buyer app is [countercheck-six.vercel.app](https://countercheck-six.vercel.app/). The separate buyer API is `https://countercheck-1-lecq.onrender.com`; the seller challenge service is `https://countercheck-seller-1146.onrender.com`.
 
-- Buyer web app: <https://countercheck-six.vercel.app/>
-- Seller challenge service: <https://countercheck-seller-1146.onrender.com>
+Hosted Testnet purchase requests require a valid Clerk session, a Clerk user ID on the explicit buyer allowlist, a same-session quote/review/approval, and the Vercel Testnet purchase switch. All settings default to blocked. The Render buyer API still uses the one configured Testnet buyer account, so allowlisted people share that account and its balance.
 
-The buyer app, buyer API health route, and seller challenge route were checked on 20 November 2026. This does not verify public payments or production readiness.
+## Create and configure Clerk
+
+1. Create a Clerk application at [dashboard.clerk.com](https://dashboard.clerk.com/) and enable the sign-in methods you want to accept.
+2. In **API keys**, copy the **Publishable key** and the **JWT public key**. Keep the secret key private; this integration verifies Clerk session JWTs with the public key and does not need the Clerk secret key.
+3. In **Users**, copy the Clerk user ID for each person allowed to authorize the demo buyer. Add only those IDs to Vercel's `COUNTERCHECK_ALLOWED_USER_IDS`, separated by commas. An authenticated but unlisted user cannot request a quote, review, approval, purchase, or receipt history.
+4. Keep public sign-up restricted if you want only invited demo buyers to use the app. Creating a Clerk account alone does not authorize a purchase.
 
 ## Vercel environment variables
 
-In Vercel, open the project that owns `countercheck-six.vercel.app` (the linked project is `countercheck`), then **Settings → Environment Variables**. Add these server-side variables for the **Production** environment:
+In the Vercel project that owns `countercheck-six.vercel.app` (the linked project is `countercheck`), open **Settings → Environment Variables**. Add these to **Production**:
 
 | Name | Value |
 |---|---|
-| `COUNTERCHECK_API_ORIGIN` | `https://countercheck-1-lecq.onrender.com` for the current buyer API. Enter only the HTTPS origin, with no path or trailing route. Do not use the seller URL or Vercel URL. |
+| `CLERK_PUBLISHABLE_KEY` | The Clerk Publishable key (`pk_...`). This is public configuration, but set it as a server environment variable so the app can return it only from `/api/auth-config`. |
+| `CLERK_JWT_KEY` | The Clerk Dashboard's JWT public key in PEM form. Never use the private signing key. |
+| `CLERK_AUTHORIZED_PARTIES` | `https://countercheck-six.vercel.app` |
+| `COUNTERCHECK_ALLOWED_USER_IDS` | Comma-separated Clerk user IDs that may use the buyer workflow. No default users are authorized. |
+| `COUNTERCHECK_PUBLIC_PURCHASES_ENABLED` | `true` only when you intend to permit the configured Testnet purchase. Omitted or `false` keeps hosted purchases blocked. |
+| `COUNTERCHECK_API_ORIGIN` | `https://countercheck-1-lecq.onrender.com` with no path or trailing route. |
 | `COUNTERCHECK_API_TOKEN` | The exact same secret as Render's `BUYER_API_TOKEN` for `countercheck-buyer-api`. Keep it private and at least 32 characters. |
 | `COUNTERCHECK_API_PROXY_ENABLED` | `true` |
 
-In the Render `countercheck-buyer-api` service, use the generated `BUYER_API_TOKEN` as Vercel's `COUNTERCHECK_API_TOKEN`. Never put the token in frontend variables (such as `NEXT_PUBLIC_*`), source code, chat, or a commit. The seller service at `countercheck-seller-1146.onrender.com` only provides the seller resource and seller A2A interface.
+The Vercel proxy verifies the signed Clerk token, checks its authorized party, enforces the allowlist, and sends a server-created user/session binding to the buyer API. The browser cannot choose that identity header. The buyer API binds quote, transaction review, approval, and purchase to the same session. Receipt history is filtered to the authorizing session.
 
-After saving the variables, redeploy the Vercel production deployment so the serverless function receives them. Vercel environment changes do not update an already-built deployment.
+## Render buyer API
 
-## Payment boundary
+In the separate Render `countercheck-buyer-api` service, keep `BUYER_API_TOKEN` configured and private. Its service must keep the existing Testnet seller, buyer, sponsor, and account settings. For an actual hosted payment, `PAYMENTS_ENABLED` and facilitator settlement must also be enabled in Render after reviewing the Testnet account and balances. Vercel's `COUNTERCHECK_PUBLIC_PURCHASES_ENABLED` is an additional independent gate; both sides must permit the transaction.
 
-Enabling the proxy makes the configured buyer API routes available through the server-side Vercel function. The proxy keeps the Render bearer token server-side. Public `POST /api/purchase` remains hard-blocked with `403 individual_authorization_required`; this setting does not add per-user login or individual authorization and does not enable buyer payment. Keep Render `PAYMENTS_ENABLED=false` and facilitator settlement disabled for this public demo until the individual authorization design is implemented and reviewed.
+The seller service only serves the seller resource and seller A2A interface. It does not provide Clerk sign-in or buyer authorization.
+
+## Apply and verify
+
+After changing Vercel environment variables, redeploy the production deployment so the functions receive them. The Git-connected Vercel project will also build automatically after a repository push.
+
+- `GET /api/auth-config` returns whether the non-secret Clerk frontend configuration is ready; it never returns the JWT key or allowed user list.
+- After signing in, `GET /api/session` shows whether the signed-in Clerk account is individually authorized. Its `userId` can be used to add that account to the allowlist.
+- `GET /api/status` reports the public purchase gate. It is enabled only when Clerk verification, at least one allowed user, the Vercel purchase switch, and the Render buyer payment configuration all permit it.
+- Without an authorized Clerk session, quote/review/approval/purchase calls are rejected. A purchase call also requires the same session that created and approved its exact transaction digest.
+
+Never put Clerk JWT keys, buyer API tokens, or Concordium signing keys in browser variables, source code, chat, or a commit.

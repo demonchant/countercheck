@@ -14,7 +14,7 @@ This guide gives the exact screen actions and narration for a full product walkt
 
 2. Open `http://127.0.0.1:4173` in a clean browser window. Set zoom to 100%, record at 1920x1080 and 30 fps, hide bookmarks and unrelated tabs, and keep the pointer visible.
 3. Confirm the header says **TESTNET SETTLEMENT ON**. Confirm the seller is configured by clicking **Load demo seller** before the take if needed; this fills the badge from the local app configuration and starts its Registry check. Do not show `.env`, terminal environment values, service logs, private keys, recovery phrases, or wallet exports.
-4. The public app at `https://countercheck-six.vercel.app/` is useful as an opening shot, but it cannot show the complete transaction flow. The public API returns `403 individual_authorization_required` for purchase requests. Use the local loopback app for the complete UI path.
+4. The hosted app requires a Clerk account on the buyer allowlist and enabled Testnet gates. Those Clerk dashboard settings must be provisioned before recording a hosted purchase. Use the local loopback app for the complete UI path; it retains the separately configured Testnet payment action.
 5. A new final-button click submits one 1 CCD Testnet payment. It must be your intentional approval of a new payment for this recording. Click it only once. Never splice a previous transaction into a new click as though it came from that session.
 
 ## Full walkthrough — about four minutes
@@ -126,7 +126,7 @@ Keep these shots in order. Trim pauses, not the approval or settlement distincti
 | 01:22–01:55 | Click **Prepare unsigned transaction review**, point to digest, click **Approve this exact transaction**. | Exact transaction is displayed; approval is digest-bound and checks are fresh. |
 | 01:55–02:35 | Click **Sign, pay 1 CCD, and get resource** once, if authorizing a new Testnet payment; show settlement and paid response. | The person makes the separate authorization; facilitator finalizes before fulfillment. |
 | 02:35–02:52 | Show receipt and transaction hash; open Testnet explorer if you inspect it during capture. | Local evidence plus the transaction reference. |
-| 02:52–03:00 | Show Testnet header and state public-payment boundary. | One configured Testnet flow; hosted purchase remains blocked pending individual authorization. |
+| 02:52–03:00 | Show Testnet header and state the access boundary. | Hosted purchases require a signed-in allowlisted Clerk user and a separate approval for the exact transaction. |
 
 If settlement takes longer, keep a moment of the real progress state and edit only after the result is known. Identify any previously recorded transaction as historical. Do not splice it as if it followed the current click.
 

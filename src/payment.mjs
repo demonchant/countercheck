@@ -1,5 +1,5 @@
 import "./node-crypto-shims.mjs";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import * as SDK from "@concordium/web-sdk";
 import { buildBasicAccountSigner } from "@concordium/web-sdk";
 import { ConcordiumGRPCNodeClient, credentials } from "@concordium/web-sdk/nodejs";
@@ -176,7 +176,7 @@ async function requestChallenge() {
   return challenge;
 }
 
-export async function createQuote() {
+export async function createQuote(ownerId) {
   const missing = [];
   if (!config.sellerBadge) missing.push("SELLER_BADGE");
   if (!config.buyerBadge) missing.push("BUYER_BADGE");
@@ -202,7 +202,7 @@ export async function createQuote() {
     if (challenge.error) return { status: "blocked", message: challenge.error };
     const id = randomUUID();
     const expiresAt = Date.now() + QUOTE_TTL_MS;
-    quotes.set(id, { id, expiresAt, requirement: challenge.requirement, summary: challenge.summary, verification, challenge: challenge.payload, used: false });
+    quotes.set(id, { id, ownerId, expiresAt, requirement: challenge.requirement, summary: challenge.summary, verification, challenge: challenge.payload, used: false });
     for (const [key, quote] of quotes) if (quote.expiresAt <= Date.now() || quote.used) quotes.delete(key);
     return { status: "quoted", quoteId: id, checkedAt: new Date().toISOString(), expiresAt: new Date(expiresAt).toISOString(), verification, payment: challenge.summary, spendCapMicroCcd: config.maxSpendMicroCcd, paymentEnabled: config.paymentsEnabled };
   } catch (error) {
@@ -210,8 +210,9 @@ export async function createQuote() {
   }
 }
 
-export async function prepareTransactionReview(quoteId) {
+export async function prepareTransactionReview(quoteId, ownerId) {
   const quote = quotes.get(quoteId);
+  if (!quote || quote.ownerId !== ownerId) return { status: "blocked", message: "This quote belongs to another buyer session or has expired. Request a new quote." };
   try {
     for (const [id, item] of preparedReviews) if (item.expiresAt <= Date.now()) preparedReviews.delete(id);
     await verifiedQuoteSnapshot(quote);
@@ -220,15 +221,16 @@ export async function prepareTransactionReview(quoteId) {
     const prepared = await readTransactionSnapshot(SDK.TransactionExpiry.fromEpochSeconds(expiryEpochSeconds));
     const reviewId = randomUUID();
     const expiresAt = Math.min(quote.expiresAt, expiryEpochSeconds * 1000);
-    preparedReviews.set(reviewId, { quoteId, prepared, expiresAt, approved: false });
+    preparedReviews.set(reviewId, { quoteId, ownerId, prepared, expiresAt, approved: false });
     return { ...reviewResponse(reviewId, prepared), reviewExpiresAt: new Date(expiresAt).toISOString() };
   } catch (error) {
     return { status: "blocked", message: error.message || "A fresh transaction review could not be prepared." };
   }
 }
 
-export async function approveTransactionReview(reviewId, signingDigest) {
+export async function approveTransactionReview(reviewId, signingDigest, ownerId) {
   const record = preparedReviews.get(reviewId);
+  if (record && record.ownerId !== ownerId) return { status: "blocked", message: "This transaction review belongs to another buyer session." };
   if (!record || record.approved || record.expiresAt <= Date.now()) {
     preparedReviews.delete(reviewId);
     return { status: "blocked", message: "This transaction review expired or was already approved. Prepare and review it again." };
@@ -291,10 +293,11 @@ function paymentResponseBody(response) {
   return null;
 }
 
-export async function confirmPurchase(approvalId, signingDigest) {
+export async function confirmPurchase(approvalId, signingDigest, ownerId) {
   const missing = missingPaymentSettings();
   if (missing.length) return { status: "blocked", message: "The local payment policy is not enabled or fully configured.", missing };
   const record = preparedReviews.get(approvalId);
+  if (record && record.ownerId !== ownerId) return { status: "blocked", message: "This transaction approval belongs to another buyer session." };
   if (!record || !record.approved || record.processing || record.expiresAt <= Date.now()
     || signingDigest !== record.prepared.review.signingDigest) {
     return { status: "blocked", message: "This exact transaction approval is missing, expired, or already used. Prepare and approve a fresh review." };
@@ -343,6 +346,7 @@ export async function confirmPurchase(approvalId, signingDigest) {
     }
     const receipt = appendAudit({
       status: "paid_and_finalized",
+      ...(ownerId ? { buyerAuthorizationHash: createHash("sha256").update(ownerId).digest("hex") } : {}),
       network: TESTNET,
       transactionHash: transaction,
       buyer: record.prepared.review.sender,

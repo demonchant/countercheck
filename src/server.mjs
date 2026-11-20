@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,20 @@ const root = resolve(fileURLToPath(new URL("../public", import.meta.url)));
 const contentTypes = new Map([[".html", "text/html; charset=utf-8"], [".css", "text/css; charset=utf-8"], [".js", "text/javascript; charset=utf-8"], [".svg", "image/svg+xml"]]);
 const expectedOrigin = `http://127.0.0.1:${config.port}`;
 const authorizeApiRequest = createBuyerApiAuthorizer({ remote: config.remoteDeployment, port: config.port, token: config.apiToken });
+
+function buyerOwner(request, response) {
+  if (!config.remoteDeployment) return { ok: true, ownerId: undefined };
+  const ownerId = request.headers["x-countercheck-user-id"];
+  if (typeof ownerId !== "string" || !/^user_[A-Za-z0-9_-]{4,}:sess_[A-Za-z0-9_-]{4,}$/u.test(ownerId)) {
+    sendJson(response, 401, { error: "individual_authorization_required" });
+    return { ok: false };
+  }
+  return { ok: true, ownerId };
+}
+
+function ownerReceiptHash(ownerId) {
+  return ownerId ? createHash("sha256").update(ownerId).digest("hex") : undefined;
+}
 
 function sendJson(response, status, value) {
   response.writeHead(status, {
@@ -92,7 +107,14 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 200, { badge: config.sellerBadge });
   }
   if (request.method === "GET" && url.pathname === "/api/receipts") {
-    try { return sendJson(response, 200, { records: recentAudit(12) }); }
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
+    try {
+      const records = recentAudit(100);
+      return sendJson(response, 200, { records: config.remoteDeployment
+        ? records.filter((record) => record.buyerAuthorizationHash === ownerReceiptHash(owner.ownerId)).slice(0, 12)
+        : records.slice(0, 12) });
+    }
     catch { return sendJson(response, 500, { error: "Local receipt log could not be read." }); }
   }
   if (!url.pathname.startsWith("/api/")) {
@@ -112,28 +134,38 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 200, await inspectBadge(body.badge));
   }
   if (url.pathname === "/api/quote") {
-    return sendJson(response, 200, await createQuote());
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
+    return sendJson(response, 200, await createQuote(owner.ownerId));
   }
   if (url.pathname === "/api/prepare") {
     if (typeof body.quoteId !== "string") return sendJson(response, 400, { error: "quoteId must be a string." });
-    return sendJson(response, 200, await prepareTransactionReview(body.quoteId));
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
+    return sendJson(response, 200, await prepareTransactionReview(body.quoteId, owner.ownerId));
   }
   if (url.pathname === "/api/approve") {
     if (typeof body.reviewId !== "string" || typeof body.signingDigest !== "string") {
       return sendJson(response, 400, { error: "reviewId and signingDigest are required." });
     }
-    return sendJson(response, 200, await approveTransactionReview(body.reviewId, body.signingDigest));
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
+    return sendJson(response, 200, await approveTransactionReview(body.reviewId, body.signingDigest, owner.ownerId));
   }
   if (url.pathname === "/api/purchase") {
     if (typeof body.approvalId !== "string" || typeof body.signingDigest !== "string") return sendJson(response, 400, { error: "approvalId and signingDigest are required." });
-    return sendJson(response, 200, await confirmPurchase(body.approvalId, body.signingDigest));
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
+    return sendJson(response, 200, await confirmPurchase(body.approvalId, body.signingDigest, owner.ownerId));
   }
   if (url.pathname === "/api/receipt/acknowledge") {
     if (typeof body.recordId !== "string" || typeof body.transactionHash !== "string" || !/^(?:0x)?[0-9a-f]{64}$/iu.test(body.transactionHash)) {
       return sendJson(response, 400, { error: "A receipt id and 32-byte transaction hash are required." });
     }
+    const owner = buyerOwner(request, response);
+    if (!owner.ok) return;
     const transactionHash = body.transactionHash.replace(/^0x/iu, "").toLowerCase();
-    const record = appendAudit({ status: "operator-attested-explorer-check", parentId: body.recordId, transactionHash, independentCheck: false, note: "Operator-attested explorer inspection; no automated CCDExplorer API read-back was made." });
+    const record = appendAudit({ status: "operator-attested-explorer-check", parentId: body.recordId, transactionHash, ...(owner.ownerId ? { buyerAuthorizationHash: ownerReceiptHash(owner.ownerId) } : {}), independentCheck: false, note: "Operator-attested explorer inspection; no automated CCDExplorer API read-back was made." });
     return sendJson(response, 200, { status: "recorded", record });
   }
   return sendJson(response, 404, { error: "Unknown endpoint." });
