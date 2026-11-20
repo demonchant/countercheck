@@ -98,3 +98,12 @@ export async function handleBuyerApiProxy(request, response, env = process.env) 
     return sendJson(response, 502, { error: "buyer_api_unavailable" });
   }
 }
+
+export function createBuyerApiProxyHandler(pathname) {
+  return async function buyerApiProxyHandler(request, response) {
+    const incomingUrl = request.url || "";
+    const queryStart = incomingUrl.indexOf("?");
+    request.url = `${pathname}${queryStart === -1 ? "" : incomingUrl.slice(queryStart)}`;
+    return handleBuyerApiProxy(request, response);
+  };
+}
