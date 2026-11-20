@@ -352,6 +352,16 @@ quoteButton.addEventListener("click", async () => {
     if (result.status !== "quoted") {
       const error = document.createElement("p"); error.className = "quote-error"; error.textContent = result.message || "No quote is available.";
       quotePanel.append(error);
+      if (result.verification && typeof result.verification === "object") {
+        for (const [label, check] of [["Buyer", result.verification.buyer], ["Seller", result.verification.seller]]) {
+          if (!check || typeof check !== "object") continue;
+          const detail = document.createElement("p");
+          detail.className = "help";
+          detail.textContent = `${label} identity: ${check.status || "unknown"}. ${check.message || "No Registry details were returned."}`;
+          if (check.onchainWallet) detail.textContent += ` Registered wallet: ${check.onchainWallet}.`;
+          quotePanel.append(detail);
+        }
+      }
       if (Array.isArray(result.missing) && result.missing.length) {
         const pending = document.createElement("p"); pending.className = "help"; pending.textContent = `Missing local configuration: ${result.missing.join(", ")}`;
         quotePanel.append(pending);
