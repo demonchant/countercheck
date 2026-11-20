@@ -116,7 +116,9 @@ export async function handleBuyerApiProxy(request, response, env = process.env) 
   let identity;
   if (SESSION_ROUTES.has(`${method} ${pathname}`)) {
     identity = guestIdentity(request, response, token, env.VERCEL === "1");
-    if (!purchasesEnabled && pathname !== "/api/receipts") return sendJson(response, 403, { error: "testnet_purchases_not_enabled" });
+    if (!purchasesEnabled && pathname !== "/api/receipts" && pathname !== "/api/quote") {
+      return sendJson(response, 403, { error: "testnet_purchases_not_enabled" });
+    }
   }
 
   return proxyToBuyerApi(request, response, env, pathname, identity, { purchasesEnabled });

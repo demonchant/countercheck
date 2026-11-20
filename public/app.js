@@ -15,7 +15,7 @@ let currentQuote = null;
 let buyerSession = { configured: localDemo, purchasesEnabled: localDemo };
 
 function canStartQuote() {
-  return currentVerification?.status === "verified" && buyerSession.purchasesEnabled;
+  return currentVerification?.status === "verified" && buyerSession.configured;
 }
 
 function updateQuoteAvailability() {
@@ -372,29 +372,34 @@ quoteButton.addEventListener("click", async () => {
     identities.textContent = `Buyer and seller badges both passed live checks. Buyer payment wallet: ${result.verification.buyer.onchainWallet}; seller payment wallet: ${result.verification.seller.onchainWallet}.`;
     quotePanel.append(identities);
     quotePanel.append(quoteFields(result.payment, result.spendCapMicroCcd));
+    const canReviewTransaction = result.paymentEnabled === true && buyerSession.purchasesEnabled;
     const warning = document.createElement("p"); warning.className = "help";
-    warning.textContent = result.paymentEnabled ? "This is a live quote. After exact transaction review and approval, a separate action signs and pays 1 CCD on Testnet; the sponsor pays the network fee." : "This is a live, non-binding quote. Payment is disabled in the current local configuration.";
+    warning.textContent = canReviewTransaction
+      ? "This is a live quote. After exact transaction review and approval, a separate action signs and pays 1 CCD on Testnet; the sponsor pays the network fee."
+      : "This is a live, non-binding quote. Transaction review and payment are disabled in the current hosted configuration.";
     quotePanel.append(warning);
-    const reviewButton = document.createElement("button");
-    reviewButton.className = "button button-outline";
-    reviewButton.type = "button";
-    reviewButton.dataset.reviewTrigger = "true";
-    reviewButton.textContent = "Prepare unsigned transaction review";
-    reviewButton.addEventListener("click", async () => {
-      reviewButton.disabled = true;
-      reviewButton.textContent = "Preparing review…";
-      try {
-        await prepareReview(result.quoteId);
-      } catch (error) {
-        const failure = document.createElement("p");
-        failure.className = "quote-error";
-        failure.textContent = error.message || "Fresh transaction review could not be prepared. No payment was made.";
-        quotePanel.append(failure);
-        announce(failure.textContent);
-        reviewButton.remove();
-      }
-    });
-    quotePanel.append(reviewButton);
+    if (canReviewTransaction) {
+      const reviewButton = document.createElement("button");
+      reviewButton.className = "button button-outline";
+      reviewButton.type = "button";
+      reviewButton.dataset.reviewTrigger = "true";
+      reviewButton.textContent = "Prepare unsigned transaction review";
+      reviewButton.addEventListener("click", async () => {
+        reviewButton.disabled = true;
+        reviewButton.textContent = "Preparing review…";
+        try {
+          await prepareReview(result.quoteId);
+        } catch (error) {
+          const failure = document.createElement("p");
+          failure.className = "quote-error";
+          failure.textContent = error.message || "Fresh transaction review could not be prepared. No payment was made.";
+          quotePanel.append(failure);
+          announce(failure.textContent);
+          reviewButton.remove();
+        }
+      });
+      quotePanel.append(reviewButton);
+    }
     setStep("policy", "done");
     setStep("pay", "current");
     announce(`Live quote received for ${formatMicroCcd(result.payment.amountMicroCcd)}. No payment was made.`);
