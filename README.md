@@ -28,16 +28,16 @@ The official [Concordium Trusted Agents Hackathon announcement](https://www.conc
 
 | Hackathon item | How Countercheck addresses it | Evidence and status |
 |---|---|---|
-| Start from an agent the builder already runs | This repository supplies buyer/seller agent cards and an optional local Ollama adapter around the read-only checks. | **Eligibility fit needs organizer confirmation.** The demo proves this repository's workflow, not a plug-in integration to a separately established production agent. The event's official announcement describes an existing-agent starting point; the unreadable programme page leaves the enforcement details unknown. |
+| Start from an agent the builder already runs | For this demonstration, we built both a buyer agent and a seller agent because we did not have an established agent available to extend. | **Eligibility fit needs organizer confirmation.** The demo shows the complete buyer/seller payment flow, but it does not plug into a separately established production agent. The event's official announcement describes an existing-agent starting point; the unreadable programme page leaves the enforcement details unknown. |
 | Show an accountable human behind the agent | Concordium's badge ties the agent record to an account connected to an identity-verified holder; Countercheck checks the active record, card hash and wallet relation. | **Shown for configured Testnet badges.** The holder's personal identity is not disclosed to the buyer, and the badge is not an endorsement. |
 | Agent payment and paid service | The buyer service prepares/signs the payment only after a person's explicit digest approval; the seller returns its resource after facilitator settlement. | **One configured Testnet run.** This is deliberately human-approved, not autonomous spending. The sponsor pays network fees; the buyer still pays the 1 CCD service price. |
 | Keep a record of agent activity | The buyer writes a hash-linked local receipt with the transaction and paid response references. | **One run.** The receipt is local and privileged users can rewrite it; no public immutable audit trail is claimed. |
 | Concordium Testnet plus meaningful Concordium component | Reads CIS-8004 Registry badge/card/wallet facts and uses the Concordium Testnet x402 payment flow with a sponsored native CCD transfer. | **Demonstrated once locally on Testnet.** See the [sanitized run record](evidence/live-e2e-2026-11-19.json) and [transaction](https://testnet.ccdscan.io/?d=transaction&dsh=71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147). The explorer was not independently inspected during that run. |
 | Project description | Problem, mechanism, boundaries and user hypothesis are described above. | **Included in this repository.** The problem is not presented as validated market demand. |
 | Public repository | Source is hosted at [github.com/demonchant/countercheck](https://github.com/demonchant/countercheck). | **Public URL identified.** Confirm the exact revision is pushed before submitting. |
-| Demo video, maximum 3 minutes | The recording follows mismatch block → verified seller → live quote → exact review → payment/finality → paid resource and explorer. | **2:41.7 (161.7 seconds)**, H.264/AAC MP4. The final duration and representative frames were checked. Watch the complete file once for audio/caption timing before upload. |
+| Demo video, maximum 3 minutes | The new recording follows mismatch block → verified seller → live quote → exact review → payment/finality → paid resource and explorer. It explains that both demonstration agents were built for this project. | [Watch the 2:55.5 video](demo-media/countercheck-demo-2026-11-20-v2.mp4). H.264/AAC MP4 with Ezinne Nigerian English neural narration and smaller captions. Duration and representative frames were checked; listen through once before submission. |
 | CCDExplorer link | The Testnet transaction link is provided above and in the evidence record. | **Transaction reference recorded.** Independent explorer-page inspection remains outstanding. |
-| Short go-live plan | Preserve individual user-controlled signing, add managed key protection, rate limits and abuse controls, durable settlement/idempotency, reconciliation, monitoring and recovery; then validate with agent buyers before a mainnet release. | **Plan documented** in [deployment operations](docs/deployment.md) and [demo/go-live notes](docs/demo-and-pitch.md). No mainnet deployment, audit or user pilot is claimed. |
+| Short go-live plan | Continue Testnet validation with dedicated accounts and individual signing; add key protection, rate limits, abuse controls, durable settlement and recovery; run a security review and a small buyer pilot before considering mainnet. | **Proposed plan.** No mainnet deployment, security audit or user pilot is claimed. |
 | Depth of Concordium identity, Registry and payments | The flow checks buyer and seller badge/account wallet relations, seller card integrity, exact x402 terms, sponsored settlement and paid fulfillment. | **One configured end-to-end Testnet run.** This is not a reliability or production claim; a badge is not an endorsement. |
 | End-to-end core flow | Verify → interrogate request → review/approve exact digest → settle → check finality → receive paid response → write local receipt. | **One run captured** in the evidence record. Automated tests separately cover deterministic policy and UI states. |
 | Real problem | Gives the buyer a reviewable link between registered seller, payment recipient, buyer policy and returned resource. | **Technical need; demand unvalidated.** No buyer interviews, frequency data, adoption or willingness-to-pay evidence is claimed. |
@@ -154,7 +154,7 @@ The optional assistant has no quality benchmark. No production load test, securi
 
 ## Demo video
 
-The raw screen recording was 3:33.6 and exceeded the event limit. The [edited 2:41.7 video](demo-media/countercheck-demo-2026-11-20.mp4) includes Ezinne Nigerian English neural narration, captions, chapter motion graphics and an evidence-limits end card. The narration is synthetic rather than human-recorded. Listen to the full export and confirm caption sync before submitting.
+The source screen recording is 3:33.6, above the event limit. The separate [2:55.5 demo cut](demo-media/countercheck-demo-2026-11-20-v2.mp4) stays under three minutes and includes Ezinne Nigerian English neural narration, smaller captions, chapter labels and an evidence-limits end card. The narration is synthetic rather than human-recorded. Both the buyer and seller agents shown in this video were built for the demonstration; this is not an integration with an independently established agent. Confirm the event's existing-agent eligibility interpretation with the organizer before submission, and listen through the export once to check caption timing.
 
 ## Boundaries and evidence
 
@@ -172,7 +172,7 @@ The raw screen recording was 3:33.6 and exceeded the event limit. The [edited 2:
 - [Deployment and local operations](docs/deployment.md)
 - [Vercel proxy setup](docs/vercel-configuration.md)
 - [Facilitator behavior and threat boundaries](docs/facilitator.md)
-- [Pitch, demo path and go-live plan](docs/demo-and-pitch.md)
+- The go-live plan is summarized in the hackathon requirement map above.
 - [Sanitized Testnet evidence index](evidence/README.md)
 - [Click-by-click demo script](DEMO_SCRIPT.md) · [recording checklist](DEMO_CHECKLIST.md)
 
