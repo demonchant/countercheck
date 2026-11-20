@@ -35,7 +35,7 @@ The official [Concordium Trusted Agents Hackathon announcement](https://www.conc
 | Concordium Testnet plus meaningful Concordium component | Reads CIS-8004 Registry badge/card/wallet facts and uses the Concordium Testnet x402 payment flow with a sponsored native CCD transfer. | **Demonstrated once locally on Testnet.** See the [sanitized run record](evidence/live-e2e-2026-11-19.json) and [transaction](https://testnet.ccdscan.io/?d=transaction&dsh=71b36427263821b76278df9fce399ea8881b5ad342da95f476e2f5c4dbbb5147). The explorer was not independently inspected during that run. |
 | Project description | Problem, mechanism, boundaries and user hypothesis are described above. | **Included in this repository.** The problem is not presented as validated market demand. |
 | Public repository | Source is hosted at [github.com/demonchant/countercheck](https://github.com/demonchant/countercheck). | **Public URL identified.** Confirm the exact revision is pushed before submitting. |
-| Demo video, maximum 3 minutes | The new recording follows mismatch block → verified seller → live quote → exact review → payment/finality → paid resource and explorer. It explains that both demonstration agents were built for this project. | [Watch the 2:55.5 video](demo-media/countercheck-demo-2026-11-20-v2.mp4). H.264/AAC MP4 with Ezinne Nigerian English neural narration and smaller captions. Duration and representative frames were checked; listen through once before submission. |
+| Demo video, maximum 3 minutes | The recording follows mismatch block → verified seller → live quote → exact review → payment/finality → paid resource and explorer. It explains that both demonstration agents were built for this project. | A separate 2:55.5 H.264/AAC submission artifact is prepared. |
 | CCDExplorer link | The Testnet transaction link is provided above and in the evidence record. | **Transaction reference recorded.** Independent explorer-page inspection remains outstanding. |
 | Short go-live plan | Continue Testnet validation with dedicated accounts and individual signing; add key protection, rate limits, abuse controls, durable settlement and recovery; run a security review and a small buyer pilot before considering mainnet. | **Proposed plan.** No mainnet deployment, security audit or user pilot is claimed. |
 | Depth of Concordium identity, Registry and payments | The flow checks buyer and seller badge/account wallet relations, seller card integrity, exact x402 terms, sponsored settlement and paid fulfillment. | **One configured end-to-end Testnet run.** This is not a reliability or production claim; a badge is not an endorsement. |
@@ -151,10 +151,6 @@ For variable definitions, account boundaries and recovery steps see [local deplo
 | Local Testnet E2E | One configured buyer/seller/sponsor flow through digest approval, sponsored settlement, finality read-back and paid resource. | One run, recorded in [sanitized evidence](evidence/live-e2e-2026-11-19.json); not repeated by the automated suites. |
 
 The optional assistant has no quality benchmark. No production load test, security audit, multi-user testnet payment test, or mainnet test is claimed.
-
-## Demo video
-
-The source screen recording is 3:33.6, above the event limit. The separate [2:55.5 demo cut](demo-media/countercheck-demo-2026-11-20-v2.mp4) stays under three minutes and includes Ezinne Nigerian English neural narration, smaller captions, chapter labels and an evidence-limits end card. The narration is synthetic rather than human-recorded. Both the buyer and seller agents shown in this video were built for the demonstration; this is not an integration with an independently established agent. Confirm the event's existing-agent eligibility interpretation with the organizer before submission, and listen through the export once to check caption timing.
 
 ## Boundaries and evidence
 
