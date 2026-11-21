@@ -45,7 +45,7 @@
             <label for="badge">Concordium agent badge</label>
             <div class="input-row"><input id="badge" name="badge" autocomplete="off" spellcheck="false" maxlength="120" placeholder="Paste the seller's CIS-8004 badge" aria-describedby="badge-help"><button id="verify" class="button button-dark" type="button">Check seller <span aria-hidden="true">↗</span></button></div>
             <div class="quick-actions"><button id="try-failure" class="text-action" type="button">Show a blocked check <span aria-hidden="true">↗</span></button><button id="load-demo-seller" class="text-action" type="button">Load demo seller <span aria-hidden="true">↗</span></button></div>
-            <p id="badge-help" class="help">Reads the live Registry entry and checks that the current Agent Card matches its registered hash and wallet.</p>
+            <p id="badge-help" class="help">Reads the live Registry entry, verifies the Agent Card bytes at its registered URI, and checks the registered payment wallet.</p>
             <div id="verification-result" class="verification-result" aria-live="polite" hidden></div>
 
             <div class="section-rule"><span>B</span><i></i><small>QUOTE → REVIEW → APPROVE → SETTLE</small></div>

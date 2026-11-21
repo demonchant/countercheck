@@ -60,6 +60,33 @@ test("a simulated seller mismatch is shown without enabling a quote", async ({ p
   await expect(page.getByRole("button", { name: /check the live request/i })).toBeDisabled();
 });
 
+test("verification shows each Registry fact and explains the card hash boundary", async ({ page }) => {
+  await page.route("**/api/verify", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      status: "payee-mismatch",
+      message: "The registered wallet does not match the configured recipient.",
+      active: true,
+      cardMatches: true,
+      recipientMatches: false,
+      onchainWallet: "registered-wallet-fixture",
+      checkedAt: "2026-11-21T10:00:00.000Z",
+    }),
+  }));
+
+  await page.goto("/");
+  await page.getByLabel("Concordium agent badge").fill(badgeFixture);
+  await page.getByRole("button", { name: /check seller/i }).click();
+
+  const result = page.locator("#verification-result");
+  await expect(result).toContainText("PASS · Registry badge active");
+  await expect(result).toContainText("PASS · Agent Card bytes match the Registry-pinned hash");
+  await expect(result).toContainText("BLOCK · Registered wallet matches the configured recipient");
+  await expect(result).toContainText("does not prove that the card describes the currently running endpoint");
+  await expect(page.getByRole("button", { name: /check the live request/i })).toBeDisabled();
+});
+
 test("a mocked 1 CCD read-only quote shows sponsor and spend details without a purchase action", async ({ page }) => {
   let purchaseEndpointCalled = false;
   await page.route("**/api/verify", (route) => route.fulfill({

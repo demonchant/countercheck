@@ -1,5 +1,6 @@
 import "./node-crypto-shims.mjs";
 import { createHash, randomUUID } from "node:crypto";
+import { createAsyncMutex } from "./async-mutex.mjs";
 import * as SDK from "@concordium/web-sdk";
 import { buildBasicAccountSigner } from "@concordium/web-sdk";
 import { ConcordiumGRPCNodeClient, credentials } from "@concordium/web-sdk/nodejs";
@@ -8,11 +9,13 @@ import { getConcordiumGrpcUrl, parseGrpcUrl } from "@x402/concordium";
 import { config, MAX_PAYMENT_MICROCCD, missingPaymentSettings } from "./config.mjs";
 import { inspectBadge } from "./registry.mjs";
 import { buildSponsoredTransferReview, createDigestBoundSigner, EXACT_PAYMENT_MICROCCD, signableMatchesReview, TESTNET } from "./payment-transaction.mjs";
+import { paidFulfillmentHasIndependentProof, readFinalizedPayment } from "./finalized-payment.mjs";
 import { appendAudit } from "./audit.mjs";
 
 const QUOTE_TTL_MS = 45_000;
 const quotes = new Map();
 const preparedReviews = new Map();
+const acquireBuyerSettlementLock = createAsyncMutex();
 
 function createGrpcClient() {
   const [host, port] = parseGrpcUrl(getConcordiumGrpcUrl(TESTNET));
@@ -212,7 +215,8 @@ export async function createQuote(ownerId) {
 
 export async function prepareTransactionReview(quoteId, ownerId) {
   const quote = quotes.get(quoteId);
-  if (!quote || quote.ownerId !== ownerId) return { status: "blocked", message: "This quote belongs to another buyer session or has expired. Request a new quote." };
+  if (!quote || quote.ownerId !== ownerId || quote.reviewReserved) return { status: "blocked", message: "This quote belongs to another buyer session, has expired, or already has a transaction review. Request a fresh quote." };
+  quote.reviewReserved = true;
   try {
     for (const [id, item] of preparedReviews) if (item.expiresAt <= Date.now()) preparedReviews.delete(id);
     await verifiedQuoteSnapshot(quote);
@@ -224,6 +228,7 @@ export async function prepareTransactionReview(quoteId, ownerId) {
     preparedReviews.set(reviewId, { quoteId, ownerId, prepared, expiresAt, approved: false });
     return { ...reviewResponse(reviewId, prepared), reviewExpiresAt: new Date(expiresAt).toISOString() };
   } catch (error) {
+    quote.reviewReserved = false;
     return { status: "blocked", message: error.message || "A fresh transaction review could not be prepared." };
   }
 }
@@ -235,10 +240,12 @@ export async function approveTransactionReview(reviewId, signingDigest, ownerId)
     preparedReviews.delete(reviewId);
     return { status: "blocked", message: "This transaction review expired or was already approved. Prepare and review it again." };
   }
+  if (record.approving) return { status: "blocked", message: "This transaction review is already being checked. Wait for the current approval result." };
   if (signingDigest !== record.prepared.review.signingDigest) {
     preparedReviews.delete(reviewId);
     return { status: "review_changed", message: "The approved digest does not match the prepared transaction. Review a fresh transaction." };
   }
+  record.approving = true;
   try {
     const quote = quotes.get(record.quoteId);
     await verifiedQuoteSnapshot(quote);
@@ -252,6 +259,8 @@ export async function approveTransactionReview(reviewId, signingDigest, ownerId)
   } catch (error) {
     preparedReviews.delete(reviewId);
     return { status: "review_changed", message: error.message || "Fresh pre-approval checks failed. Prepare a new review." };
+  } finally {
+    record.approving = false;
   }
   record.approved = true;
   quotes.get(record.quoteId).used = true;
@@ -293,6 +302,10 @@ function paymentResponseBody(response) {
   return null;
 }
 
+export function settlementOutcomeIsUnresolved(statusCode, settlement, fulfillmentConfirmed = false) {
+  return statusCode < 200 || statusCode >= 300 || settlement?.success !== true || fulfillmentConfirmed !== true;
+}
+
 export async function confirmPurchase(approvalId, signingDigest, ownerId) {
   const missing = missingPaymentSettings();
   if (missing.length) return { status: "blocked", message: "The local payment policy is not enabled or fully configured.", missing };
@@ -303,8 +316,13 @@ export async function confirmPurchase(approvalId, signingDigest, ownerId) {
     return { status: "blocked", message: "This exact transaction approval is missing, expired, or already used. Prepare and approve a fresh review." };
   }
   record.processing = true;
+  const releaseBuyerSettlementLock = await acquireBuyerSettlementLock();
   const quote = quotes.get(record.quoteId);
+  let settlementRequestStarted = false;
+  let expectedTransactionHash = null;
+  let dispatchIntent = null;
   try {
+    if (record.expiresAt <= Date.now()) throw new Error("This transaction approval expired while waiting for the buyer account lock. Prepare and approve a fresh review.");
     if (!signableMatchesReview(record.prepared.signable, record.prepared.review)) throw new Error("The prepared transaction no longer matches its reviewed digest.");
     await verifiedQuoteSnapshot(quote, true);
     const fresh = await readTransactionSnapshot(record.prepared.signable.header.expiry);
@@ -314,6 +332,7 @@ export async function confirmPurchase(approvalId, signingDigest, ownerId) {
 
     const signer = createDigestBoundSigner(signingDigest, buildBasicAccountSigner(config.privateKey));
     const signed = await SDK.Transaction.sign(record.prepared.signable, signer);
+    expectedTransactionHash = Buffer.from(SDK.Transaction.getAccountTransactionHash(SDK.Transaction.finalize(signed))).toString("hex");
     const signedTransaction = jsonSafe(SDK.Transaction.toJSON(signed));
     const paymentPayload = {
       x402Version: 2,
@@ -322,6 +341,22 @@ export async function confirmPurchase(approvalId, signingDigest, ownerId) {
       accepted: quote.requirement,
     };
     const encoded = Buffer.from(JSON.stringify(paymentPayload)).toString("base64");
+    dispatchIntent = appendAudit({
+      status: "settlement-dispatch-intent",
+      quoteId: record.quoteId,
+      signingDigest,
+      ...(ownerId ? { buyerAuthorizationHash: createHash("sha256").update(ownerId).digest("hex") } : {}),
+      network: TESTNET,
+      transactionHash: expectedTransactionHash,
+      buyer: record.prepared.review.sender,
+      seller: record.prepared.review.recipient,
+      sponsor: record.prepared.review.sponsor,
+      amountMicroCcd: record.prepared.review.amountMicroCcd,
+      asset: "CCD",
+      feeMicroCcd: record.prepared.review.feeMicroCcd,
+      note: "Signed transaction hash and reviewed fields are durably recorded before the seller request. No private key or signed transaction payload is stored. If the process stops here, check Testnet before any retry.",
+    }, { durable: true });
+    settlementRequestStarted = true;
     const response = await fetch(config.sellerResourceUrl, {
       method: "GET",
       headers: { accept: "application/json", "payment-signature": encoded },
@@ -332,45 +367,82 @@ export async function confirmPurchase(approvalId, signingDigest, ownerId) {
     let body;
     try { body = JSON.parse(bodyText); } catch { body = null; }
     const settlement = paymentResponseBody(response);
-    const transaction = settlement?.success === true ? paymentTransaction(response) : null;
-    if (!response.ok || settlement?.success !== true || !transaction || body?.paid !== true) {
-      const unresolved = settlement?.errorReason === "settlement_unresolved" || settlement?.errorReason === "finalization_details_unavailable";
+    const transaction = paymentTransaction(response);
+    const expectedPayment = {
+      network: TESTNET,
+      transactionHash: expectedTransactionHash,
+      sender: record.prepared.review.sender,
+      recipient: record.prepared.review.recipient,
+      sponsor: record.prepared.review.sponsor,
+      amountMicroCcd: record.prepared.review.amountMicroCcd,
+    };
+    const sellerFulfillmentClaimed = response.ok && settlement?.success === true
+      && transaction === expectedTransactionHash && body?.paid === true;
+    const chainVerification = sellerFulfillmentClaimed
+      ? await readFinalizedPayment(createGrpcClient(), expectedPayment)
+      : { status: "unresolved", reason: "seller_response_did_not_match_signed_transaction" };
+    const fulfillmentConfirmed = paidFulfillmentHasIndependentProof({
+      httpStatus: response.status,
+      settlement,
+      responseTransaction: transaction,
+      body,
+      expectedTransactionHash,
+      chainVerification,
+    });
+    if (settlementOutcomeIsUnresolved(response.status, settlement, fulfillmentConfirmed)) {
+      try {
+        appendAudit({ status: "settlement_unresolved", parentId: dispatchIntent.id, quoteId: record.quoteId, signingDigest, network: TESTNET,
+          ...(ownerId ? { buyerAuthorizationHash: createHash("sha256").update(ownerId).digest("hex") } : {}),
+          transactionHash: expectedTransactionHash,
+          amountMicroCcd: record.prepared.review.amountMicroCcd, seller: record.prepared.review.recipient,
+          note: `No buyer-verified finalized transfer and paid fulfillment were established (${chainVerification.reason || "seller_response_incomplete_or_mismatched"}). Do not retry; reconcile the expected transaction hash against Testnet first.` });
+      } catch { /* Never turn an uncertain settlement into success if audit storage is unavailable. */ }
       return {
-        status: unresolved ? "settlement_unresolved" : "settlement_failed",
-        message: unresolved
-          ? "Settlement was submitted or may still be processing, but finality was not confirmed. Do not retry this approval; check Testnet before preparing a new transaction."
-          : `The seller did not confirm paid fulfillment (HTTP ${response.status}). No success receipt was recorded.`,
-        settlement: settlement?.errorReason || "paid_resource_response_missing",
-        transaction: settlement?.transaction || "",
+        status: "settlement_unresolved",
+        message: "The payment request was sent, but the buyer could not independently verify the exact finalized transfer and paid fulfillment. No success receipt was recorded. Do not retry; reconcile the expected transaction hash on Testnet first.",
+        settlement: settlement?.errorReason || chainVerification.reason || "paid_resource_response_missing",
+        transaction: expectedTransactionHash,
       };
     }
     const receipt = appendAudit({
       status: "paid_and_finalized",
+      parentId: dispatchIntent.id,
       ...(ownerId ? { buyerAuthorizationHash: createHash("sha256").update(ownerId).digest("hex") } : {}),
       network: TESTNET,
-      transactionHash: transaction,
+      transactionHash: expectedTransactionHash,
       buyer: record.prepared.review.sender,
       seller: record.prepared.review.recipient,
       sponsor: record.prepared.review.sponsor,
       amountMicroCcd: record.prepared.review.amountMicroCcd,
       asset: "CCD",
       feeMicroCcd: record.prepared.review.feeMicroCcd,
-      independentCheck: false,
+      independentCheck: true,
       chainReadbackVerified: true,
-      finality: "a second facilitator gRPC read of the finalized block matched buyer, seller, amount, and CCD asset; no separate explorer API read was made",
-      explorerUrl: `https://testnet.ccdscan.io/?d=transaction&dsh=${transaction}`,
+      finality: "buyer-side Testnet gRPC lookup by locally computed transaction hash matched a finalized transfer, buyer, seller, sponsor, and amount; no separate explorer API read was made",
+      explorerUrl: `https://testnet.ccdscan.io/?d=transaction&dsh=${expectedTransactionHash}`,
     });
     return {
       status: "paid_and_finalized",
       message: "Payment finalized on Concordium Testnet. The seller returned the paid resource.",
-      transactionHash: transaction,
+      transactionHash: expectedTransactionHash,
       receipt,
       resource: body,
-      explorerUrl: `https://testnet.ccdscan.io/?d=transaction&dsh=${transaction}`,
+      explorerUrl: `https://testnet.ccdscan.io/?d=transaction&dsh=${expectedTransactionHash}`,
     };
   } catch (error) {
-    return { status: "settlement_failed", message: error.message || "Purchase stopped before a confirmed paid response. Do not retry this approval." };
+    if (settlementRequestStarted) {
+      try {
+        appendAudit({ status: "settlement_unresolved", ...(dispatchIntent ? { parentId: dispatchIntent.id } : {}), quoteId: record.quoteId, signingDigest, network: TESTNET,
+          ...(ownerId ? { buyerAuthorizationHash: createHash("sha256").update(ownerId).digest("hex") } : {}),
+          ...(expectedTransactionHash ? { transactionHash: expectedTransactionHash } : {}),
+          amountMicroCcd: record.prepared.review.amountMicroCcd, seller: record.prepared.review.recipient,
+          note: "The payment request began, but the buyer did not receive a response that can establish settlement outcome. No success receipt was recorded; operator reconciliation is required before another attempt." });
+      } catch { /* The user still receives the fail-closed unresolved state. */ }
+      return { status: "settlement_unresolved", ...(expectedTransactionHash ? { transaction: expectedTransactionHash } : {}), message: "The payment request may have reached the seller, but its outcome could not be confirmed. No success receipt was recorded. Do not retry; inspect Concordium Testnet and seller settlement state first." };
+    }
+    return { status: "settlement_failed", message: error.message || "Purchase stopped before a payment request was sent. Do not retry this approval." };
   } finally {
     preparedReviews.delete(approvalId);
+    releaseBuyerSettlementLock();
   }
 }

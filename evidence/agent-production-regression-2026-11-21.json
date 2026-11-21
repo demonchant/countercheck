@@ -1,0 +1,44 @@
+{
+  "recordedAt": "2026-11-21T00:52:43Z",
+  "revision": "local worktree; uncommitted",
+  "provenance": "OBSERVED local verification",
+  "checks": [
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "result": "136 Node tests passed, 0 failed; 6 Playwright Chromium tests passed, 0 failed. Browser API/Registry/quote cases use fixtures and do not execute a payment."
+    },
+    {
+      "command": "A2A discovery interoperability test using @a2a-js/sdk ClientFactory",
+      "status": "passed",
+      "result": "The SDK fetched the default buyer card and explicit seller card path over HTTP, then called both JSON-RPC endpoints and received fixture-backed results. This validates local card discovery and protocol interoperability only."
+    },
+    {
+      "command": "Audit-log tests",
+      "status": "passed",
+      "result": "Durable append, hash-linked history, tamper refusal, and configured size-bound rejection passed."
+    },
+    {
+      "command": "node --check on changed source and test modules",
+      "status": "passed",
+      "result": "A2A card, A2A server, seller server, audit log, payment, A2A demo, and their new test modules parsed successfully."
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed",
+      "result": "No whitespace errors found."
+    }
+  ],
+  "implementationCovered": [
+    "Read-only A2A service cards are discoverable at /.well-known/agent-card.json and /.well-known/seller-agent-card.json; their descriptions explicitly state they are not CIS-8004 identity attestations.",
+    "Buyer records and fsyncs a hash-linked transaction dispatch intent with reviewed parties and amount before sending the signed seller request. It stores no raw signed payload or private key.",
+    "Local JSONL audit rejects files above 16 MiB and refuses an append that would cross the configured bound.",
+    "A2A JSON-RPC endpoint supports browser preflight for POST and protocol headers while exposing only read-only actions."
+  ],
+  "limits": [
+    "A dispatch intent proves neither that a request reached the seller nor that a transaction settled; operators must reconcile the hash and must not retry blindly.",
+    "Audit storage remains a local single-writer JSONL file on the configured disk. There is no shared transactional store, retention automation, multi-instance locking, or external tamper anchor.",
+    "A2A discovery tests use the project's own SDK server and fixture actions. No independently implemented third-party or pre-existing agent was run, so this does not establish hackathon eligibility or a user pilot.",
+    "No fresh Registry read, payment, production deployment, public endpoint check, or mainnet test was performed."
+  ]
+}

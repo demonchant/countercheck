@@ -93,6 +93,25 @@ function renderVerification(result) {
   const description = document.createElement("span");
   description.textContent = result.message || "The Registry did not return a verifiable result.";
   verificationResult.append(title, description);
+  const checks = [
+    ["Registry badge active", result.active],
+    ["Agent Card bytes match the Registry-pinned hash", result.cardMatches],
+    ["Registered wallet matches the configured recipient", result.recipientMatches],
+  ];
+  const facts = document.createElement("ul");
+  facts.className = "verification-facts";
+  for (const [label, passed] of checks) {
+    if (typeof passed !== "boolean") continue;
+    const item = document.createElement("li");
+    item.dataset.status = passed ? "passed" : "failed";
+    item.textContent = `${passed ? "PASS" : "BLOCK"} · ${label}`;
+    facts.append(item);
+  }
+  if (facts.childElementCount) verificationResult.append(facts);
+  const boundary = document.createElement("small");
+  boundary.className = "help";
+  boundary.textContent = "A card-hash match verifies bytes at the registered URI. It does not prove that the card describes the currently running endpoint or that the service is trustworthy.";
+  verificationResult.append(boundary);
   if (result.checkedAt && Number.isFinite(Date.parse(result.checkedAt))) {
     const checkedAt = document.createElement("small");
     checkedAt.className = "help";

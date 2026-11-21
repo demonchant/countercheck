@@ -2,9 +2,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import { resolveOllamaBaseUrl } from "./ollama-config.mjs";
 
 const model = process.env.OLLAMA_MODEL || "llama3.2:3b";
-const ollamaUrl = (process.env.OLLAMA_URL || "http://127.0.0.1:11434").replace(/\/$/u, "");
+const ollamaUrl = resolveOllamaBaseUrl(process.env.OLLAMA_URL || "http://127.0.0.1:11434", process.env.OLLAMA_ALLOW_REMOTE || "false");
 // This model host must not load the buyer signing key from .env.
 process.env.CCD_PRIVATE_KEY = "";
 const { createCountercheckMcpServer } = await import("./mcp-server.mjs");
@@ -82,7 +83,7 @@ try {
   const safeTools = tools.filter((tool) => ["verify_counterparties", "request_purchase_quote"].includes(tool.name));
   if (safeTools.length !== 2) throw new Error("Countercheck read-only MCP tools are missing.");
   console.log(`Countercheck local agent ready (${model}; payments are never available to this agent).`);
-  console.log("Commands: /verify (read-only), /quote (read-only), /exit. Or ask a question. Prompts and responses stay on this laptop.");
+  console.log(`Commands: /verify (read-only), /quote (read-only), /exit. Or ask a question. Prompts are sent to ${ollamaUrl}; remote hosts require explicit opt-in and HTTPS.`);
   while (true) {
     const question = (await terminal.question("You> ")).trim();
     if (!question) continue;

@@ -1,0 +1,47 @@
+{
+  "recordedAt": "2026-11-21T00:31:30Z",
+  "revision": "a90430b",
+  "worktree": "dirty local working tree; changes not committed",
+  "provenance": "OBSERVED local verification",
+  "checks": [
+    {
+      "command": "npm ci",
+      "status": "passed",
+      "result": "Installed 163 packages from package-lock.json. npm reported three moderate dependency advisories and warned that protobufjs@7.6.6 has an install script not yet approved. No dependency override was applied."
+    },
+    {
+      "command": "npm test",
+      "status": "passed",
+      "result": "131 passed, 0 failed, 0 skipped."
+    },
+    {
+      "command": "npm run test:browser",
+      "status": "passed",
+      "result": "6 Playwright Chromium tests passed, 0 failed. The Registry and quote cases use fixtures; the suite asserts that payment is not called."
+    },
+    {
+      "command": "npm run test:all",
+      "status": "passed",
+      "result": "Combined Node suite: 131 passed, 0 failed. Combined Playwright suite: 6 passed, 0 failed."
+    },
+    {
+      "command": "PowerShell loop calling node --check on src/payment.mjs, src/finalized-payment.mjs, src/ollama-config.mjs, src/async-mutex.mjs, src/local-agent.mjs, and public/app.js",
+      "status": "passed",
+      "result": "All six JavaScript files parsed successfully."
+    }
+  ],
+  "implementationCovered": [
+    "Buyer computes the expected transaction hash from its signed transaction and requires a buyer-side finalized Testnet transfer matching sender, recipient, sponsor, amount, and hash before a paid success receipt.",
+    "Incomplete, mismatched, or unavailable settlement evidence remains unresolved and instructs reconciliation before retry.",
+    "An in-process buyer settlement mutex serializes signing/settlement attempts and one transaction review may be reserved per quote.",
+    "Ollama defaults to loopback; remote hosts require OLLAMA_ALLOW_REMOTE=true and HTTPS, with configuration validation tests.",
+    "Verification UI lists badge-active, Registry-pinned card-hash, and configured-recipient wallet checks, and states the limit of the hash result."
+  ],
+  "limits": [
+    "Buyer-side finality tests use Concordium SDK fixture summaries and a disposable test signing key; no network transaction was sent.",
+    "The in-process mutex does not coordinate separate Vercel/Render instances; durable cross-instance buyer state and locking remain unimplemented.",
+    "Playwright fixtures do not establish live Registry, seller, payment, or production behavior.",
+    "No production build script is defined in package.json; the deployed frontend is static and the local Node service was exercised by Playwright.",
+    "Read-only public deployment refresh attempts failed through the available network path; the 20 November capture remains the latest successful check. No new Registry read, CCDExplorer inspection, organizer ruling, deployment, push, or submission was performed."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "capturedAtWindowUtc": "2026-11-20T18:50:00Z to 2026-11-20T18:59:00Z",
+  "method": "Read-only HTTPS GETs and one A2A get_x402_offer request. No authorization or payment payload was sent.",
+  "checks": [
+    {
+      "service": "Vercel buyer UI",
+      "url": "https://countercheck-six.vercel.app/",
+      "httpStatus": 200,
+      "contentBytes": 8543,
+      "title": "Countercheck",
+      "versionedCss": true,
+      "versionedJs": true
+    },
+    {
+      "service": "Vercel buyer API status",
+      "url": "https://countercheck-six.vercel.app/api/status",
+      "httpStatus": 200,
+      "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+      "paymentEnabled": false,
+      "settlementEnabled": false,
+      "publicPurchasesEnabled": false,
+      "sellerConfigured": true
+    },
+    {
+      "service": "Render buyer API health",
+      "url": "https://countercheck-1-lecq.onrender.com/healthz",
+      "httpStatus": 200,
+      "ok": true
+    },
+    {
+      "service": "Render seller resource",
+      "url": "https://countercheck-seller-1146.onrender.com/resource",
+      "httpStatus": 402,
+      "response": "payment_required",
+      "meaning": "A payment challenge is available. This does not prove that settlement or paid fulfillment is enabled."
+    },
+    {
+      "service": "Render seller A2A offer",
+      "url": "https://countercheck-seller-1146.onrender.com/a2a/seller/v1",
+      "httpStatus": 200,
+      "request": "get_x402_offer",
+      "agentStatus": "challenge_available",
+      "paidFulfillmentAvailable": false
+    }
+  ],
+  "limitations": [
+    "No interactive browser visual inspection was performed; page and API responses were fetched directly.",
+    "No transaction was authorized, signed, submitted, or paid.",
+    "The Vercel purchase switch, buyer payment setting, and settlement setting were all off at capture time."
+  ]
+}

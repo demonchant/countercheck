@@ -7,6 +7,7 @@ import { AccountAddress } from "@concordium/web-sdk";
 import { resolveFacilitatorUrl, resolveSellerResourceUrl, sellerListenConfig } from "./seller-resource-config.mjs";
 import { createChallengeOnlyFacilitator, hasPaymentAuthorization } from "./seller-challenge-only.mjs";
 import { createA2AJsonRpcHandler } from "./a2a-agent.mjs";
+import { createCountercheckAgentCards } from "./a2a-agent-card.mjs";
 
 const TESTNET = "ccd:4221332d34e1694168c2a0c0b3fd0f27";
 const MAX_PAYMENT_MICROCCD = "1000000";
@@ -86,6 +87,7 @@ const resourceUrl = resolveSellerResourceUrl({
   renderExternalUrl: renderRuntime ? process.env.RENDER_EXTERNAL_URL || "" : "",
   port,
 });
+const discoveryCards = createCountercheckAgentCards(resourceUrl);
 const httpResource = new x402HTTPResourceServer(resource, {
   "GET /resource": {
     accepts: {
@@ -179,8 +181,15 @@ function send(response, status, headers, body) {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", resourceUrl);
-  if (request.method === "POST" && url.pathname === "/a2a/buyer/v1") return buyerA2A(request, response);
-  if (request.method === "POST" && url.pathname === "/a2a/seller/v1") return sellerA2A(request, response);
+  if (request.method === "GET" && discoveryCards[url.pathname]) {
+    return send(response, 200, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" }, discoveryCards[url.pathname]);
+  }
+  if (url.pathname === "/a2a/buyer/v1" || url.pathname === "/a2a/seller/v1") {
+    if (request.method === "OPTIONS" || request.method === "POST") {
+      return (url.pathname === "/a2a/buyer/v1" ? buyerA2A : sellerA2A)(request, response);
+    }
+    return send(response, 405, { allow: "POST, OPTIONS", "content-type": "application/json; charset=utf-8" }, { error: "method_not_allowed" });
+  }
   if (request.method === "GET" && url.pathname === "/healthz") {
     if (renderRuntime) return send(response, 404, { "content-type": "application/json; charset=utf-8" }, { error: "not_found" });
     return send(response, 200, { "content-type": "application/json; charset=utf-8" }, {

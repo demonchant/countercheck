@@ -4,6 +4,17 @@
 
 > Agent commerce can make a payment request easy to execute while leaving the buyer to connect three separate facts: who the seller is registered as, where the request sends funds, and whether those exact terms fit the buyer's policy. Countercheck puts that review in one flow. This is a concrete technical problem and a product hypothesis; the issue discussions below do not establish its frequency or market demand.
 
+## What Countercheck can do
+
+- Check configured Concordium buyer and seller badges, pinned Agent Card hashes, active status, and registered payment wallets.
+- Let an existing A2A client discover the read-only buyer policy and seller offer services, or let a local MCP host call the verification and quote tools.
+- Compare the live x402 request with a fixed Testnet policy for native CCD, configured recipient and sponsor, exact amount, and expiry.
+- Prepare the exact unsigned transaction for review, require a person's approval of its signing digest, and repeat identity and payment checks before signing.
+- Record a transaction intent before dispatch, independently verify finalized transaction details after settlement, check the paid resource response, and write a hash-linked local receipt.
+- Offer an optional local Ollama assistant for read-only explanations and checks; deterministic code retains control of identity, policy, and payment authorization.
+
+The [agent integration guide](docs/agent-integration.md) shows the A2A and MCP connection paths. The reproducible A2A tour is `npm run demo:a2a`. The latest combined automated run passed 136 Node tests and 6 browser tests; the test results use local fixtures where documented in [verification evidence](docs/test-evidence.md).
+
 ## The problem and the product
 
 An agent buyer finds a paid data or API service. The service returns a valid HTTP 402 payment challenge, with a network, token, amount, recipient and expiry. A successful transfer proves that value moved. By itself, it does not show that the recipient is the registered wallet of the seller the buyer intended, that the charge fits the buyer's ceiling, or what resource the seller returned after settlement.
@@ -167,6 +178,7 @@ The optional assistant has no quality benchmark. No production load test, securi
 - [Deployment and local operations](docs/deployment.md)
 - [Vercel proxy setup](docs/vercel-configuration.md)
 - [Facilitator behavior and threat boundaries](docs/facilitator.md)
+- [A2A/MCP integration with an existing agent](docs/agent-integration.md)
 - The go-live plan is summarized in the hackathon requirement map above.
 - [Sanitized Testnet evidence index](evidence/README.md)
 - [Click-by-click demo script](DEMO_SCRIPT.md) · [recording checklist](DEMO_CHECKLIST.md)

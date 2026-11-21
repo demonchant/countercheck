@@ -13,6 +13,7 @@
     "agent": "node src/local-agent.mjs",
     "seller": "node src/seller-resource.mjs",
     "facilitator": "node src/facilitator.mjs",
+    "demo:a2a": "node demo/a2a-sdk-interoperability.mjs",
     "test": "node test/run.mjs",
     "test:browser": "playwright test",
     "test:all": "npm test && npm run test:browser"

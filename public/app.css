@@ -102,6 +102,8 @@ h1 em { color: var(--lime); font-style: normal; }
 .verification-result[data-status="verified"] { border-color: #8da66d; border-left-color: #5e853f; background: #e8efdd; }
 .verification-result[data-status="unavailable"], .verification-result[data-status="revoked"], .verification-result[data-status="payee-mismatch"], .verification-result[data-status="unverified"], .verification-result[data-status="seller-mismatch"] { border-color: #e0b29e; border-left-color: #c25f3e; background: #f7e9df; }
 .verification-result strong { display: block; margin-bottom: 3px; font-size: 11px; }.verification-result a { display: inline-block; margin-top: 8px; color: #365d2e; font: 8px var(--mono); }
+.verification-facts { display: grid; gap: 3px; margin: 10px 0; padding: 0; list-style: none; font: 8px var(--mono); }
+.verification-facts li[data-status="passed"] { color: #365d2e; }.verification-facts li[data-status="failed"] { color: #9a3d2b; font-weight: 700; }
 .section-rule { margin: 29px 0 24px; display: flex; align-items: center; gap: 9px; color: #78847b; }
 .section-rule>span { width: 22px; height: 22px; display: grid; place-items: center; border: 1px solid #c9d0c3; color: #46574a; font: 9px var(--mono); }.section-rule>i { height: 1px; flex: 1; background: #d6dbd1; }.section-rule>small { font: 7px var(--mono); letter-spacing: .08em; }
 .purchase-head { display: flex; align-items: center; justify-content: space-between; gap: 15px; }.purchase-head .eyebrow { color: #687468; font-size: 8px; }.purchase-head h3 { margin: 7px 0 0; color: var(--ink); font: 630 clamp(17px, 2vw, 22px)/1.2 var(--display); letter-spacing: -.04em; }

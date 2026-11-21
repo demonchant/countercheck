@@ -19,6 +19,8 @@ If hosted purchases are enabled, any visitor can use the one configured Testnet 
 
 The 19 November evidence is one completed run, not a guarantee that a fresh run will succeed. Registry, seller, facilitator, node access, balances and expiry are time-sensitive and must be checked again.
 
+The seller service also exposes A2A v1 discovery cards at `/.well-known/agent-card.json` and `/.well-known/seller-agent-card.json`. These describe the read-only integration capabilities; they are not the Agent Cards anchored to badges 1147/1146 and do not prove CIS-8004 identity. The current seller badge/card mismatch remains unresolved.
+
 ## Start and stop
 
 Review-only challenge mode (no signing keys or API tokens passed to child processes):
@@ -41,6 +43,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\demo\stop-testnet-demo.ps1
 
 Never record `.env`, terminal environment values, service logs, wallet exports, or private keys. If a payment result is ambiguous, preserve `unresolved`, check the sender and chain, and do not retry until reconciled.
 
+## Production readiness path
+
+The current hosted configuration is a controlled Testnet demonstration. It is not a production multi-user payment architecture: guest cookies are anonymous session scoping; hosted visitors share a configured buyer account; buyer quote/review state and rate limits are process-local; and the buyer signing key is a server secret. Persistent audit intent improves crash reconciliation but does not provide distributed atomicity, identity, or signer isolation. Hosted payments remain disabled by default.
+
+Before a paid pilot, complete these gates:
+
+1. **Prove fit with existing operators.** Integrate through the A2A or stdio MCP interfaces without requesting another agent's signing key. Record setup friction and real policy mismatches; do not infer adoption from the hackathon demo.
+2. **Give each operator an identity and account boundary.** Replace guest scoping with individual authentication (OIDC/passkey or an equivalent approved identity provider), per-tenant data access, and explicit authorization. Never route multiple customers through one buyer key.
+3. **Move state to a shared durable store.** Persist quotes, review/approval state, idempotency keys, dispatch intents, and reconciliation outcomes with atomic uniqueness and transaction locking. Prove recovery across restart and concurrent instances.
+4. **Isolate signing authority.** Move signing behind a scoped managed signer/HSM or user-controlled wallet. Enforce network, asset, recipient, amount and digest policy in a separate deterministic service; do not pass signer credentials to an agent or model.
+5. **Operate the service.** Add centralized rate limits, request tracing without secrets, settlement/reconciliation alerts, key rotation, backup/restore, retention controls, incident response, and service-level objectives.
+6. **Earn the production boundary.** Resolve the seller card URI, run fresh Testnet end-to-end and failure/recovery drills, independently review security and privacy, and only then evaluate mainnet support under a separate architecture and authorization.
+
+These are prerequisites, not implemented production capabilities. Mainnet use is not currently supported.
+
 ## Configuration summary
 
 Copy `.env.example` to `.env` and fill values only on the builder's machine. Important settings:
@@ -60,7 +77,7 @@ Copy `.env.example` to `.env` and fill values only on the builder's machine. Imp
 | `FACILITATOR_MAX_AMOUNT_MICROCCD`, `FACILITATOR_MIN_SPONSOR_BALANCE_MICROCCD`, `FACILITATOR_STORE_PATH` | Facilitator amount cap, minimum reserve and local replay store. |
 | `SELLER_RESOURCE_ENABLED`, `SELLER_CHALLENGE_ONLY` | Seller resource mode; leave disabled or challenge-only unless a payment run is intended. |
 | `AUDIT_LOG_PATH` | Local hash-linked receipt log, outside `public/`. |
-| `OLLAMA_URL`, `OLLAMA_MODEL` | Optional model host and name. Prompts are sent to the configured Ollama host; loopback is the default. |
+| `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_ALLOW_REMOTE` | Optional model host and name. Loopback is the default. Remote hosts require `OLLAMA_ALLOW_REMOTE=true` and HTTPS; prompts are sent to that configured host. |
 
 ## Optional local assistant
 

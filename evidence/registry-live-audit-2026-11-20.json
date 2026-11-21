@@ -1,0 +1,69 @@
+{
+  "capturedAt": "2026-11-20T18:50:47.927Z",
+  "method": "Read-only official Registry REST checks plus Countercheck inspectBadge, which also queried the Registry MCP get_agent_wallet tool. No transaction was signed or submitted.",
+  "network": "Concordium Testnet",
+  "registryOrigin": "https://agent-registry-mcp.concordium.com",
+  "agents": [
+    {
+      "label": "buyer",
+      "agentId": 1147,
+      "badge": "JyP9WD3R9D4tgxwjcy8jc",
+      "status": "verified",
+      "active": true,
+      "registeredWallet": "3phKp6hd4vJU3WHexeVrc7mrkFbx3S9UtAxxsPEwE7S6rmNq7x",
+      "recipientMatchesConfiguredWallet": true,
+      "onChainAgentUri": "https://raw.githubusercontent.com/demonchant/countercheck/b6364756b3657402a433a980c0b29b22d62b6e63/agent-cards/countercheck-buyer-1147.json",
+      "onChainCardHash": "7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb",
+      "registryCardMatch": true,
+      "registryPinnedBytes": 3424,
+      "registryPinnedSha256": "7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb",
+      "currentLocalBytes": 3424,
+      "currentLocalSha256": "7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb",
+      "currentPublicMainBytes": 3424,
+      "currentPublicMainSha256": "7ef2184dfab624b7afebf0ae7507062ef587c66504702896438b77d5da2b7acb",
+      "currentLocalMatchesRegistryPinnedCard": true
+    },
+    {
+      "label": "seller",
+      "agentId": 1146,
+      "badge": "JyP9WBwwDBZxrqhuqHWPt",
+      "status": "verified",
+      "active": true,
+      "registeredWallet": "44khdNXk2yBn8PvJYFYNsKuZrV8oUvdHo23bL6dA7YyEYGkEF7",
+      "recipientMatchesConfiguredWallet": true,
+      "onChainAgentUri": "https://raw.githubusercontent.com/demonchant/countercheck/b6364756b3657402a433a980c0b29b22d62b6e63/agent-cards/countercheck-seller-1146.json",
+      "onChainCardHash": "a9e0c76a35fcf4c8a98cb6cc9c06e9158c1231f7b5fc45faa0734bdfbf542db2",
+      "registryCardMatch": true,
+      "registryPinnedBytes": 3213,
+      "registryPinnedSha256": "a9e0c76a35fcf4c8a98cb6cc9c06e9158c1231f7b5fc45faa0734bdfbf542db2",
+      "currentLocalBytes": 3234,
+      "currentLocalSha256": "74712f093aeb6804ded21d975b2a3fff2e8eca97e2b3441cff1105b211586519",
+      "currentPublicMainBytes": 3234,
+      "currentPublicMainSha256": "74712f093aeb6804ded21d975b2a3fff2e8eca97e2b3441cff1105b211586519",
+      "currentLocalMatchesRegistryPinnedCard": false,
+      "candidateImmutableUri": "https://raw.githubusercontent.com/demonchant/countercheck/ff9cf1d316591364e5aa7cef71855d94fac6cf5f/agent-cards/countercheck-seller-1146.json",
+      "candidateUriHttpStatus": 200,
+      "candidateUriBytes": 3234,
+      "candidateUriSha256": "74712f093aeb6804ded21d975b2a3fff2e8eca97e2b3441cff1105b211586519",
+      "candidateSellerA2AHttpStatus": 200,
+      "candidateSellerA2AOfferStatus": "challenge_available",
+      "candidateSellerA2APaidFulfillmentAvailable": false,
+      "differencesObserved": [
+        "The pinned A2A interface points to countercheck-zid6.onrender.com/a2a/seller/v1; the current card points to countercheck-seller-1146.onrender.com/a2a/seller/v1."
+      ]
+    }
+  ],
+  "publicRawMainComparison": {
+    "buyerHttpStatus": 200,
+    "buyerMatchesLocal": true,
+    "sellerHttpStatus": 200,
+    "sellerMatchesLocal": true
+  },
+  "historicalDiscrepancyResolution": "The 12 November evidence captured earlier Agent Card bytes that did not match the then-observed Registry metadata. The 20 November Registry now points at a pinned GitHub commit whose buyer card matches the current checkout, while its seller card matches an older seller snapshot. This explains why a Registry check can report cardMatches=true while the current seller file differs: the Registry verifies the card at its on-chain Agent URI, not automatically the current main-branch file.",
+  "limitations": [
+    "These are public Registry service responses and public GitHub bytes; no independent Concordium explorer read was made in this capture.",
+    "The seller's current Agent Card is not the on-chain-pinned seller card. Its current endpoint metadata is therefore not yet anchored to badge 1146.",
+    "No Registry metadata transaction was prepared, signed, or submitted. Updating the seller Agent URI requires operator authorization and a separate on-chain verification procedure.",
+    "A matching card hash, active badge, and registered wallet do not establish agent behavior, service quality, legal compliance, or payment settlement."
+  ]
+}

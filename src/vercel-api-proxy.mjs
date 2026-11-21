@@ -1,4 +1,10 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createBoundedWindowLimiter } from "./bounded-rate-limit.mjs";
+
+// Best-effort per-function-instance protection. Distributed/global rate limiting
+// requires a shared store and is not claimed by this in-memory control.
+const expensiveRouteLimiter = createBoundedWindowLimiter({ limit: 30, windowMs: 60_000, maxEntries: 2_048 });
+const expensiveRouteProcessLimiter = createBoundedWindowLimiter({ limit: 300, windowMs: 60_000, maxEntries: 1 });
 
 const ROUTES = new Map([
   ["GET /api/status", "GET"],
@@ -103,6 +109,11 @@ export async function handleBuyerApiProxy(request, response, env = process.env) 
   if (!allowedBuyerApiRoute(request.method || "", request.url || "/")) return sendJson(response, 404, { error: "not_found" });
   const method = request.method || "";
   const pathname = new URL(request.url, "https://vercel.invalid").pathname;
+  if (["/api/verify", "/api/quote"].includes(pathname)) {
+    const clientAddress = String(request.headers?.["x-forwarded-for"] || request.socket?.remoteAddress || "unknown").split(",", 1)[0].trim();
+    if (!expensiveRouteLimiter.allow(`${pathname}:${clientAddress}`)
+      || !expensiveRouteProcessLimiter.allow("all-expensive-routes")) return sendJson(response, 429, { error: "rate_limited" });
+  }
   const purchasesEnabled = env.COUNTERCHECK_PUBLIC_PURCHASES_ENABLED === "true";
   if (pathname === "/api/status" && method === "GET") {
     return proxyToBuyerApi(request, response, env, pathname, undefined, { purchasesEnabled });

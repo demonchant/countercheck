@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { AgentEvent, DefaultRequestHandler, InMemoryTaskStore, JsonRpcTransportHandler, defaultServerCallContextBuilder } from "@a2a-js/sdk/server";
 import { Role } from "@a2a-js/sdk";
+import { createBoundedWindowLimiter } from "./bounded-rate-limit.mjs";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const RATE_WINDOW_MS = 60_000;
@@ -48,22 +49,25 @@ export function createReadOnlyA2AExecutor(actions) {
   };
 }
 
-export function createA2AJsonRpcHandler({ cardPath, actions }) {
+export function createA2AJsonRpcHandler({ cardPath, actions, rateLimitOptions = {}, processRateLimitOptions = {} }) {
   const card = JSON.parse(readFileSync(cardPath, "utf8"));
   const requestHandler = new DefaultRequestHandler(card, new InMemoryTaskStore(), createReadOnlyA2AExecutor(actions));
   const transport = new JsonRpcTransportHandler(requestHandler);
-  const requestCounts = new Map();
+  const limiter = createBoundedWindowLimiter({ limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS, ...rateLimitOptions });
+  const processLimiter = createBoundedWindowLimiter({ limit: 120, windowMs: RATE_WINDOW_MS, maxEntries: 1, ...processRateLimitOptions });
 
   return async function handleA2A(request, response) {
-    const now = Date.now();
-    const key = request.socket.remoteAddress || "unknown";
-    let usage = requestCounts.get(key);
-    if (!usage || now - usage.startedAt >= RATE_WINDOW_MS) {
-      usage = { startedAt: now, count: 0 };
-      requestCounts.set(key, usage);
+    response.setHeader("access-control-allow-origin", "*");
+    response.setHeader("access-control-allow-methods", "POST, OPTIONS");
+    response.setHeader("access-control-allow-headers", "content-type, a2a-version");
+    response.setHeader("access-control-max-age", "600");
+    if (request.method === "OPTIONS") {
+      response.writeHead(204, { "cache-control": "no-store" });
+      response.end();
+      return;
     }
-    usage.count += 1;
-    if (usage.count > RATE_LIMIT) {
+    const key = request.socket.remoteAddress || "unknown";
+    if (!limiter.allow(key) || !processLimiter.allow("all-a2a-clients")) {
       response.writeHead(429, { "cache-control": "no-store", "content-type": "application/json; charset=utf-8" });
       response.end(JSON.stringify({ error: "rate_limited" }));
       return;

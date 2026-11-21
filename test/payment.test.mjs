@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectRequirement, parseChallenge, paymentTransaction } from "../src/payment.mjs";
+import { inspectRequirement, parseChallenge, paymentTransaction, settlementOutcomeIsUnresolved } from "../src/payment.mjs";
 
 const policy = {
   network: "ccd:4221332d34e1694168c2a0c0b3fd0f27",
@@ -9,6 +9,15 @@ const policy = {
   sellerPayTo: "seller-test-address",
   sponsorAddress: "sponsor-test-address",
 };
+
+test("buyer treats every incomplete post-submit result as unresolved until chain and fulfillment checks pass", () => {
+  assert.equal(settlementOutcomeIsUnresolved(502, null, false), true);
+  assert.equal(settlementOutcomeIsUnresolved(200, { errorReason: "settlement_unresolved" }, false), true);
+  assert.equal(settlementOutcomeIsUnresolved(200, { errorReason: "finalization_details_unavailable" }, false), true);
+  assert.equal(settlementOutcomeIsUnresolved(200, { success: true }, false), true);
+  assert.equal(settlementOutcomeIsUnresolved(200, { success: true }, true), false);
+  assert.equal(settlementOutcomeIsUnresolved(402, { errorReason: "invalid_payment" }, false), true);
+});
 
 function requirement(feePayer = policy.sponsorAddress) {
   return {
